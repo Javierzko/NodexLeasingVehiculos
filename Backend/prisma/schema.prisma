@@ -1,0 +1,377 @@
+//schema prisma 
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// 0. CATÁLOGO CENTRAL DE ESTADOS
+// ==========================================
+model Estado {
+  id     Int     @id @default(autoincrement())
+  tipo   String
+  nombre String
+  activo Boolean @default(true)
+
+  // Relaciones inversas con Caso
+  casosEstado         Caso[] @relation("CasoEstado")
+  casosCategoria      Caso[] @relation("CasoCategoria")
+  casosEtapa          Caso[] @relation("CasoEtapa")
+  casosSubetapa       Caso[] @relation("CasoSubetapa")
+  casosCausaAtraso    Caso[] @relation("CasoCausaAtraso")
+  casosEstadoContrato Caso[] @relation("CasoEstadoContrato")
+
+  // Relación con historial de estados
+  estadosCaso EstadosCaso[] @relation("EstadoEstadosCaso")
+
+  // Relaciones inversas con Vehiculo
+  vehiculosMatricula Vehiculo[] @relation("VehiculoMatricula")
+  vehiculosSoat      Vehiculo[] @relation("VehiculoSoat")
+  vehiculosTecno     Vehiculo[] @relation("VehiculoTecno")
+
+  // Relación inversa con ProcesoJuridico
+  procesosSaneamiento ProcesoJuridico[] @relation("ProcesoSaneamiento")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// 1. LOCATARIO / CLIENTE
+// ==========================================
+model Locatario {
+  id             Int     @id @default(autoincrement())
+  nit            String  @unique
+  nombreBanco    String?
+  tipoDocumento  String?
+  email          String?
+  revisionCorreo Boolean @default(false)
+  contactoNombre String?
+  contactoNumero String?
+  direccionEnvio String?
+  locatarioRunt  String?
+
+  // Datos del Comercial Asignado
+  nombreComercial       String?
+  emailComercial        String?
+  revisionMailComercial Boolean @default(false)
+
+  casos Caso[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// 2. PROPIETARIO REGISTRADO
+// ==========================================
+model Propietario {
+  id             Int    @id @default(autoincrement())
+  identificacion String @unique
+  nombre         String
+
+  vehiculos Vehiculo[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// 3. VEHÍCULO / AUTOMOTOR
+// ==========================================
+model Vehiculo {
+  placa           String  @id
+  vin             String? @unique
+  marca           String?
+  linea           String?
+  modelo          Int?
+  cilindraje      String?
+  motor           String?
+  chasis          String?
+  serie           String?
+  color           String?
+  tipoVehiculo    String?
+  tipoServicio    String?
+  tipoCarroceria  String?
+  tipoCombustible String?
+  blindaje        String?
+
+  // Relación Estado Matrícula
+  estadoMatriculaId Int?
+  estadoMatricula   Estado? @relation("VehiculoMatricula", fields: [estadoMatriculaId], references: [id])
+
+  // Ubicación del Tránsito
+  transito              String?
+  departamento          String?
+  regional              String?
+  empresaTransportadora String?
+
+  // Documentación Técnica
+  soatId       Int?
+  soat         Estado?   @relation("VehiculoSoat", fields: [soatId], references: [id])
+  vigenciaSoat DateTime?
+
+  revisionTecnomecanicaId Int?
+  revisionTecnomecanica   Estado?   @relation("VehiculoTecno", fields: [revisionTecnomecanicaId], references: [id])
+  vigenciaTecno           DateTime?
+
+  // Relación Propietario
+  propietarioId Int?
+  propietario   Propietario? @relation(fields: [propietarioId], references: [id])
+
+  casos Caso[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// 4. CASO / TRÁMITE PRINCIPAL
+// ==========================================
+model Caso {
+  id             Int     @id @default(autoincrement())
+  numeroContrato String  @unique
+  radicadoBizagi String?
+
+  // Relación Estado Contrato
+  estadoContratoId Int?
+  estadoContrato   Estado? @relation("CasoEstadoContrato", fields: [estadoContratoId], references: [id])
+
+  gestiones GestionCaso[]
+
+  // Fechas Clave del Proceso Operativo
+  fecha               DateTime?
+  fechaAsignacion     DateTime?
+  fechaCierreTraspaso DateTime?
+  analistaResponsable String?
+
+  // Opción de Compra
+  aplicaInscripcionOpcionCompra Boolean  @default(false)
+  valorOpcionCompra             Decimal?
+
+  // Estados y Categorías Relacionados
+  estadoId Int?
+  estado   Estado? @relation("CasoEstado", fields: [estadoId], references: [id])
+
+  categoriaId Int?
+  categoria   Estado? @relation("CasoCategoria", fields: [categoriaId], references: [id])
+
+  etapaId Int?
+  etapa   Estado? @relation("CasoEtapa", fields: [etapaId], references: [id])
+
+  subetapaId Int?
+  subetapa   Estado? @relation("CasoSubetapa", fields: [subetapaId], references: [id])
+
+  causaAtrasoId Int?
+  causaAtraso   Estado? @relation("CasoCausaAtraso", fields: [causaAtrasoId], references: [id])
+
+  // Notificaciones al Locatario
+  seEnvioNotificacion          Boolean   @default(false)
+  fechaDebesEnviarNotificacion DateTime?
+  fechaNotificacionInicial     DateTime?
+  fechaUltimaNotificacion      DateTime?
+  fechaProximaNotificacion     DateTime?
+
+  // Trazabilidad y Gestión Diaria
+  fechaUltimaGestion   DateTime?
+  fechaProximaGestion  DateTime?
+  observacionesGestion String?
+  ultimoComentario     String?
+
+  // Suspensión del Caso
+  fechaSolicitudSuspension DateTime?
+  fechaHastaSuspension     DateTime?
+
+  // Traspaso y Gestión de Citas
+  traspasoConCita              Boolean   @default(false)
+  fechaInicioCitaTransito      DateTime?
+  fechaConsecucionCitaTransito DateTime?
+  fechaCitaTransito            DateTime?
+  fechaRadicacionTraspaso      DateTime?
+  fechaRechazo                 DateTime?
+  fechaSubsanacionRechazo      DateTime?
+  fechaTraspasoAprobado        DateTime?
+  fechaCierreTraspasoBizagi    DateTime?
+
+  // Logística y Entrega de Tarjeta
+  ubicacionTarjeta             String?
+  nombreCorresponsalTramitador String?
+  fechaEntregaDatosEnvio       DateTime?
+  fechaProgramacionEntregaTp   DateTime?
+  fechaEntregaTpLocatario      DateTime?
+
+  // Tiempos Registrados por Área
+  tiempoEntidadesExternas Float?
+  tiempoBanco             Float?
+  tiempoJuridicoExterno   Float?
+  tiempoJuridicoInterno   Float?
+  tiempoTransito          Float?
+  tiempoOperativoAnalista Float?
+
+  // Honorarios y Facturación Principal
+  honorarios          Decimal?
+  facturado           Boolean   @default(false)
+  fechaFactura        DateTime?
+  numeroFactura       String?
+  observacionesGp     String?
+  formulaTraspasosGpa String?
+
+  // Honorarios Servicios Jurídicos
+  honorariosServiciosJuridicos Decimal?
+  facturadoJuridico            Boolean   @default(false)
+  numeroFacturaJuridico        String?
+  fechaFacturaJuridico         DateTime?
+  observacionesGeneral         String?
+
+  // Relaciones
+  locatarioId Int
+  locatario   Locatario @relation(fields: [locatarioId], references: [id])
+
+  vehiculoPlaca String
+  vehiculo      Vehiculo @relation(fields: [vehiculoPlaca], references: [placa])
+
+  procesoJuridico ProcesoJuridico?
+  auditoriaMulta  AuditoriaMulta?
+
+  // Historial de estados, etapas y subetapas
+  estadosCaso EstadosCaso[] @relation("CasoEstadosCaso")
+
+  archivos Archivo[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// 5. PROCESO JURÍDICO Y SANEAMIENTO
+// ==========================================
+model ProcesoJuridico {
+  id     Int  @id @default(autoincrement())
+  casoId Int  @unique
+  caso   Caso @relation(fields: [casoId], references: [id], onDelete: Cascade)
+
+  // Entidades Externas y Recursos
+  fechaEscalamientoEntidadEx     DateTime?
+  fechaRespuestaEntidadEx        DateTime?
+  fechaLiquidacionTotalPasivos   DateTime?
+  fechaSolicitudRecursos         DateTime?
+  fechaDesembolsoRecursos        DateTime?
+  fechaFinDiagnosticoPagoPasivos DateTime?
+
+  // Saneamiento Jurídico
+  tipoSaneamientoARealizarId Int?
+  tipoSaneamientoARealizar   Estado? @relation("ProcesoSaneamiento", fields: [tipoSaneamientoARealizarId], references: [id])
+
+  fechaSolicitudSaneamientoJuridico DateTime?
+  fechaFinSaneamientoJuridico       DateTime?
+
+  // Derecho de Petición (DP)
+  fechaRadicacionDp DateTime?
+  fechaRespuestaDp  DateTime?
+
+  // Tutela
+  fechaRadicacionTutela DateTime?
+  numeroRadicadoTutela  String?
+  juzgado               String?
+
+  // Gestión Documental Adicional
+  fechaSolicitudDocsAdicionalesTraspaso DateTime?
+  fechaEntregaDocsAdicionalesTraspaso   DateTime?
+  fechaFinGestionDocumentalTraspaso     DateTime?
+}
+
+// ==========================================
+// 6. AUDITORÍA DE MULTAS, IMPUESTOS Y CARGAS
+// ==========================================
+model AuditoriaMulta {
+  id     Int  @id @default(autoincrement())
+  casoId Int  @unique
+  caso   Caso @relation(fields: [casoId], references: [id], onDelete: Cascade)
+
+  limitacionesPropiedad              String?
+  tipoLimitaciones                   String?
+  garantiasMobiliarias               String?
+  simitMultasPropietarioResoluciones String?
+  simitMultasLocatario               String?
+  multasPlaca                        String?
+  impuestos                          String?
+  vigenciasAdeudadas                 String?
+  impuestosTransito                  String?
+}
+
+// ==========================================
+// 7. GESTIÓN DE CASO
+// ==========================================
+model TipoDocumento {
+  id          Int     @id @default(autoincrement())
+  codigo      String  @unique
+  nombre      String
+  obligatorio Boolean @default(true)
+  activo      Boolean @default(true)
+
+  archivos Archivo[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Archivo {
+  id              Int           @id @default(autoincrement())
+  casoId          Int
+  caso            Caso          @relation(fields: [casoId], references: [id], onDelete: Cascade)
+  tipoDocumentoId Int
+  tipoDocumento   TipoDocumento @relation(fields: [tipoDocumentoId], references: [id])
+
+  nombreOriginal String
+  blobName       String        @unique
+  containerName  String
+  mimeType       String
+  sizeBytes      BigInt
+  estado         EstadoArchivo @default(SUBIDO)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([casoId])
+  @@index([casoId, tipoDocumentoId])
+}
+
+enum EstadoArchivo {
+  PENDIENTE
+  SUBIDO
+  ERROR
+  ELIMINADO
+}
+
+model GestionCaso {
+  id                  Int       @id @default(autoincrement())
+  casoId              Int
+  caso                Caso      @relation(fields: [casoId], references: [id], onDelete: Cascade)
+  tipoObservacion     String
+  comentario          String    @db.Text
+  fechaGestion        DateTime  @default(now())
+  fechaProximaGestion DateTime?
+  analistaResponsable String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+// ==========================================
+// 8. HISTORIAL DE ESTADOS DEL CASO
+// ==========================================
+model EstadosCaso {
+  id          Int       @id @default(autoincrement())
+  casoId      Int
+  tipo        String
+  estadoId    Int
+  fechaInicio DateTime
+  fechaFin    DateTime?
+  createdAt   DateTime  @default(now())
+
+  caso   Caso   @relation("CasoEstadosCaso", fields: [casoId], references: [id], onDelete: Cascade)
+  estado Estado @relation("EstadoEstadosCaso", fields: [estadoId], references: [id])
+}

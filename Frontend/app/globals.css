@@ -1,0 +1,237 @@
+@import "tailwindcss";
+
+:root {
+  /* Colores base de la aplicación */
+  --app-background: #ffffff;
+  --app-foreground: #2d3e3a;
+  --app-surface: #ffffff;
+  --app-surface-soft: #f8fcfb;
+  --app-surface-muted: #e6f4f1;
+
+  /* Marca */
+  --app-primary: #5fae9d;
+  --app-primary-hover: #4a9484;
+  --app-primary-strong: #234740;
+
+  /* Borde y texto */
+  --app-border: #cee3de;
+  --app-border-strong: #5fae9d;
+  --app-muted: #5e7e78;
+  --app-muted-light: #8faea8;
+
+  /* Estados semánticos */
+  --app-success: #5fae9d;
+  --app-success-bg: #e6f4f1;
+  --app-warning: #aa8551;
+  --app-warning-bg: #fffaf0;
+  --app-danger: #b35c65;
+  --app-danger-bg: #fff4f4;
+  --app-info: #528899;
+
+  /* Profundidad, radios y transición */
+  --app-shadow-xs: 0 1px 2px rgba(45, 82, 74, 0.04);
+  --app-shadow-sm: 0 4px 12px rgba(45, 82, 74, 0.06);
+  --app-shadow-md: 0 10px 24px rgba(45, 82, 74, 0.08);
+  --app-shadow-card: 0 12px 32px -4px rgba(45, 82, 74, 0.08);
+  --app-radius-sm: 0.5rem;
+  --app-radius-md: 0.75rem;
+  --app-radius-lg: 1rem;
+  --app-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+
+  --app-font-sans: "Inter", "Segoe UI", Arial, Helvetica, sans-serif;
+  --app-font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+@theme inline {
+  --color-background: var(--app-background);
+  --color-foreground: var(--app-foreground);
+  --color-surface: var(--app-surface);
+  --color-surface-soft: var(--app-surface-soft);
+  --color-surface-muted: var(--app-surface-muted);
+  --color-border: var(--app-border);
+  --color-primary: var(--app-primary);
+  --color-primary-hover: var(--app-primary-hover);
+  --color-primary-strong: var(--app-primary-strong);
+  --color-muted: var(--app-muted);
+  --color-muted-light: var(--app-muted-light);
+  --color-success: var(--app-success);
+  --color-warning: var(--app-warning);
+  --color-danger: var(--app-danger);
+  --color-info: var(--app-info);
+  --font-sans: var(--app-font-sans);
+  --font-mono: var(--app-font-mono);
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    background-color: var(--app-background);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-width: 320px;
+    margin: 0;
+    background-color: var(--app-background);
+    color: var(--app-foreground);
+    font-family: var(--app-font-sans);
+    font-size: 0.94rem;
+    line-height: 1.5;
+  }
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--app-primary) 25%, transparent);
+    color: var(--app-foreground);
+  }
+
+  :where(button, input, textarea, select, a):focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--app-primary) 28%, transparent);
+    outline-offset: 2px;
+  }
+
+  input,
+  textarea,
+  select {
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-sm);
+    background-color: var(--app-surface);
+    color: var(--app-foreground);
+    box-shadow: var(--app-shadow-xs);
+    transition:
+      border-color 160ms var(--app-ease-out),
+      box-shadow 160ms var(--app-ease-out),
+      background-color 160ms var(--app-ease-out);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--app-muted-light);
+  }
+
+  input:hover,
+  textarea:hover,
+  select:hover {
+    border-color: var(--app-border-strong);
+  }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    border-color: var(--app-primary);
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--app-primary) 15%, transparent),
+      var(--app-shadow-xs);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  thead,
+  thead th {
+    background-color: var(--app-surface-muted);
+  }
+
+  thead th {
+    border-color: var(--app-border);
+    color: var(--app-muted);
+    font-size: 0.69rem;
+    font-weight: 700;
+    letter-spacing: 0.075em;
+  }
+
+  table td {
+    border-color: var(--app-border);
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+    font-size: 0.75rem;
+  }
+
+  tbody tr:hover {
+    background-color: var(--app-surface-soft);
+  }
+
+  hr {
+    border: 0;
+    border-top: 1px solid var(--app-border);
+  }
+
+  * {
+    scrollbar-color: var(--app-border-strong) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: padding-box;
+    background-color: var(--app-border-strong);
+  }
+}
+
+@layer components {
+  /* Agrega estas clases solo a las piezas que realmente deben parecer tarjetas. */
+  .app-card {
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-lg);
+    background-color: var(--app-surface);
+    box-shadow: var(--app-shadow-card);
+  }
+
+  .app-panel {
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-lg);
+    background-color: var(--app-surface);
+    box-shadow: var(--app-shadow-md);
+  }
+
+  .app-sidebar-item--active {
+    border: 1px solid var(--app-border-strong);
+    border-radius: var(--app-radius-md);
+    background-color: var(--app-surface-muted);
+    color: var(--app-primary-strong);
+  }
+
+  .app-sidebar-item--active > span {
+    background-color: var(--app-surface);
+    color: var(--app-muted);
+    box-shadow: 0 1px 3px rgba(45, 82, 74, 0.1);
+  }
+
+  .app-button-primary {
+    border: 1px solid var(--app-primary);
+    border-radius: var(--app-radius-md);
+    background-color: var(--app-primary);
+    color: #ffffff;
+    transition:
+      background-color 160ms var(--app-ease-out),
+      border-color 160ms var(--app-ease-out);
+  }
+
+  .app-button-primary:hover {
+    border-color: var(--app-primary-hover);
+    background-color: var(--app-primary-hover);
+  }
+}
+
+@media (max-width: 760px) {
+  body {
+    font-size: 0.88rem;
+  }
+}

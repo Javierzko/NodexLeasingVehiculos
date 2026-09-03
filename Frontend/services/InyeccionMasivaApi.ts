@@ -59,7 +59,7 @@ export interface ResultadoImportacion {
 }
 
 const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+  process.env.NEXT_PUBLIC_API_URL || 'http://10.0.4.4:5001'
 ).replace(/\/$/, '');
 
 export async function importarVehiculos(

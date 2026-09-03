@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 import {
@@ -50,9 +51,10 @@ const DOCUMENTOS_SOLICITADOS: DocumentoSolicitado[] = [
   },
 ];
 
-export default function CargaDocumentosPage() {
+function CargaDocumentosContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+
   const numeroContrato = searchParams.get("numeroContrato") ?? "";
 
   const handleLogout = () => {
@@ -79,10 +81,12 @@ export default function CargaDocumentosPage() {
                 priority
               />
             </div>
+
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground">
                 Aliado estratégico de
               </p>
+
               <p className="mt-0.5 text-2xl font-extrabold tracking-[-0.03em] text-foreground">
                 Bancolombia
               </p>
@@ -98,6 +102,7 @@ export default function CargaDocumentosPage() {
                 ◯
               </span>
             </span>
+
             <button
               className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-foreground transition-colors hover:bg-surface-soft focus:outline-none focus:ring-2 focus:ring-primary/35 focus:ring-offset-2"
               onClick={handleLogout}
@@ -106,6 +111,7 @@ export default function CargaDocumentosPage() {
               <span className="text-xl leading-none" aria-hidden="true">
                 ⇥
               </span>
+
               Cerrar sesión
             </button>
           </div>
@@ -123,7 +129,9 @@ export default function CargaDocumentosPage() {
           >
             Inicio
           </Link>
+
           <span aria-hidden="true">›</span>
+
           <span aria-current="page" className="font-bold text-primary">
             Cargar documentos
           </span>
@@ -138,10 +146,12 @@ export default function CargaDocumentosPage() {
               >
                 ⇧
               </span>
+
               <div>
                 <h1 className="text-3xl font-extrabold tracking-[-0.035em] text-foreground">
                   Cargar documentos
                 </h1>
+
                 <p className="mt-1.5 text-sm leading-6 text-muted sm:text-base">
                   Adjunta los documentos solicitados para continuar con tu
                   trámite.
@@ -159,6 +169,7 @@ export default function CargaDocumentosPage() {
               >
                 i
               </span>
+
               <p>
                 Los documentos serán revisados por nuestro equipo y te
                 notificaremos por correo electrónico si se requiere algo
@@ -186,6 +197,7 @@ export default function CargaDocumentosPage() {
             >
               ◌
             </span>
+
             <div>
               <h2
                 id="ayuda-titulo"
@@ -193,11 +205,13 @@ export default function CargaDocumentosPage() {
               >
                 ¿Necesitas ayuda?
               </h2>
+
               <p className="mt-1 text-xs leading-5 text-muted">
                 Estamos para acompañarte en cada etapa del proceso.
               </p>
             </div>
           </div>
+
           <div className="flex items-start gap-4 md:pl-6">
             <span
               className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface-muted text-xl text-primary"
@@ -205,18 +219,22 @@ export default function CargaDocumentosPage() {
             >
               ☎
             </span>
+
             <div>
               <p className="text-sm font-semibold text-foreground">
                 Línea telefónica
               </p>
+
               <p className="mt-1 text-lg font-extrabold tracking-[-0.02em] text-foreground">
                 (604) 604 1990
               </p>
+
               <p className="mt-1 text-xs leading-5 text-muted">
                 Lunes a viernes, 7:30 a. m. a 5:00 p. m.
               </p>
             </div>
           </div>
+
           <div className="flex items-start gap-4 md:pl-6">
             <span
               className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface-muted text-xl text-primary"
@@ -224,13 +242,16 @@ export default function CargaDocumentosPage() {
             >
               ✉
             </span>
+
             <div>
               <p className="text-sm font-semibold text-foreground">
                 Correo electrónico
               </p>
+
               <p className="mt-1 break-words text-sm font-extrabold text-foreground">
                 finalizacionesleasing@gomezpinedaabogados.com
               </p>
+
               <p className="mt-1 text-xs leading-5 text-muted">
                 Atenderemos tu correo en el menor tiempo posible.
               </p>
@@ -244,5 +265,13 @@ export default function CargaDocumentosPage() {
         Protección de Datos Personales.
       </footer>
     </main>
+  );
+}
+
+export default function CargaDocumentosPage() {
+  return (
+    <Suspense fallback={<div>Cargando...</div>}>
+      <CargaDocumentosContent />
+    </Suspense>
   );
 }

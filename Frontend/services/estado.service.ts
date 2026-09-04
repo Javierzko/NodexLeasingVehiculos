@@ -1,11 +1,10 @@
-//raiz services/estado.service.ts
+import { apiClient } from "@/api/client";
 
-const API_URL = 'http://10.0.4.4:5001/estados'; 
-
-export const obtenerEstadosPorTipo = async (tipo:string) => {
-  const respuesta = await fetch(`${API_URL}?tipo=${tipo}`);
-  if (!respuesta.ok) {
+export const obtenerEstadosPorTipo = async (tipo: string) => {
+  try {
+    const respuesta = await apiClient.get(`/estados?tipo=${encodeURIComponent(tipo)}`);
+    return respuesta.data;
+  } catch (error) {
     throw new Error(`Error al obtener estados para el tipo: ${tipo}`);
   }
-  return await respuesta.json();
 };

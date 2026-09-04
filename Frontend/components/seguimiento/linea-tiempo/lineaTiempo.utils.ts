@@ -1,3 +1,5 @@
+// src components/seguimiento/linea-tiempo/lineaTiempo.utils.ts
+
 import { ETAPAS_VISIBLES_SEGUIMIENTO } from '@/constants/seguimiento.constants';
 
 /**
@@ -19,8 +21,12 @@ export const coincide = (
   valorReal: string,
   valorParametrizado: string,
 ) => {
+  if (!valorReal || !valorParametrizado) return false;
+
   const real = normalizar(valorReal);
   const parametrizado = normalizar(valorParametrizado);
+
+  if (!real || !parametrizado) return false;
 
   return (
     real === parametrizado ||
@@ -31,20 +37,26 @@ export const coincide = (
 
 /**
  * Obtiene la posición de la etapa actual dentro de las seis etapas visibles.
- * La primera etapa tiene índice 0 y la sexta etapa tiene índice 5.
+ * Retorna -1 si no hay etapa o subetapa asignada.
  */
 export const obtenerIndiceEtapaVisible = (
   etapaActual: string | null,
   subetapaActual: string | null,
 ) => {
-  const actividad = subetapaActual || '';
-  const etapa = etapaActual || '';
+  const actividad = subetapaActual?.trim() || '';
+  const etapa = etapaActual?.trim() || '';
+
+  // Si no hay valores reales de etapa o subetapa, no hay ninguna etapa activa.
+  if (!actividad && !etapa) {
+    return -1;
+  }
 
   // Primero buscamos coincidencias en la actividad o subetapa.
   const indicePorActividad = ETAPAS_VISIBLES_SEGUIMIENTO.findIndex((grupo) =>
     grupo.valoresActividad.some(
       (valor) =>
-        coincide(actividad, valor) || coincide(etapa, valor),
+        (actividad && coincide(actividad, valor)) ||
+        (etapa && coincide(etapa, valor)),
     ),
   );
 
@@ -54,7 +66,7 @@ export const obtenerIndiceEtapaVisible = (
 
   // Si no encontramos coincidencia en la actividad, buscamos en la etapa.
   return ETAPAS_VISIBLES_SEGUIMIENTO.findIndex((grupo) =>
-    grupo.valoresEtapa.some((valor) => coincide(etapa, valor)),
+    grupo.valoresEtapa.some((valor) => etapa && coincide(etapa, valor)),
   );
 };
 
@@ -65,6 +77,7 @@ export const obtenerIndiceEtapaVisible = (
  * La etapa actual cuenta como el hito alcanzado actualmente.
  *
  * Resultado aproximado:
+ * Sin etapa (0) = 0 %
  * Etapa 1 = 17 %
  * Etapa 2 = 33 %
  * Etapa 3 = 50 %
@@ -81,13 +94,11 @@ export const calcularPorcentajeAvance = (
     subetapaActual,
   );
 
-  // findIndex devuelve -1 cuando no encuentra la etapa.
+  // findIndex devuelve -1 cuando no encuentra la etapa o cuando no hay datos.
   if (indiceActual < 0) {
     return 0;
   }
 
-  // No se compara la cantidad de etapas con 0 porque el arreglo está
-  // declarado con `as const` y TypeScript conoce que contiene seis etapas.
   return Math.round(
     ((indiceActual + 1) / ETAPAS_VISIBLES_SEGUIMIENTO.length) * 100,
   );

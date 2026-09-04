@@ -1,16 +1,18 @@
 // raiz components/Modal/CasoFormEntitySections.tsx
 'use client';
 
+import { TabId } from '@/hooks/useCrearCasoForm';
 import React, { useMemo, useState } from 'react';
 import { CrearCasoInput, Locatario, Vehiculo } from '@/types/leasing';
-import { TabId } from '@/hooks/useCrearCasoForm';
 import { useBusquedaInteligente } from '@/hooks/useBusquedaInteligente';
 
 type ChangeHandler = (
   e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
 ) => void;
 
-type NuevoLocatario = {
+export type ModoEntidad = 'existente' | 'editar' | 'nuevo';
+
+export type NuevoLocatario = {
   nombreBanco: string;
   nit: string;
   tipoDocumento: string;
@@ -25,7 +27,7 @@ type NuevoLocatario = {
   revisionMailComercial: boolean;
 };
 
-type NuevoVehiculo = {
+export type NuevoVehiculo = {
   placa: string;
   vin: string;
   marca: string;
@@ -59,6 +61,7 @@ function Campo({
   onChange,
   type = 'text',
   placeholder,
+  disabled = false,
 }: {
   label: string;
   name?: string;
@@ -66,6 +69,7 @@ function Campo({
   onChange?: ChangeHandler;
   type?: string;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -76,7 +80,8 @@ function Campo({
         value={value ?? ''}
         onChange={onChange}
         placeholder={placeholder}
-        className={inputClass}
+        disabled={disabled}
+        className={`${inputClass} ${disabled ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
       />
     </div>
   );
@@ -138,8 +143,8 @@ export function LocatarioSection({
   nuevoLocatario,
   setNuevoLocatario,
 }: {
-  modoLocatario: 'existente' | 'nuevo';
-  setModoLocatario: (mode: 'existente' | 'nuevo') => void;
+  modoLocatario: ModoEntidad;
+  setModoLocatario: (mode: ModoEntidad) => void;
   locatarios: Locatario[];
   formData: CrearCasoInput;
   handleChange: ChangeHandler;
@@ -166,8 +171,23 @@ export function LocatarioSection({
   }, [data, locatarios, searchTerm]);
 
   const seleccionado = locatarios.find((loc) => loc.id === formData.locatarioId);
+
   const seleccionar = (loc: Locatario) => {
     handleChange({ target: { name: 'locatarioId', value: String(loc.id), type: 'number' } } as unknown as React.ChangeEvent<HTMLInputElement>);
+    setNuevoLocatario({
+      nombreBanco: loc.nombreBanco || '',
+      nit: loc.nit || '',
+      tipoDocumento: loc.tipoDocumento || '',
+      email: loc.email || '',
+      revisionCorreo: loc.revisionCorreo || false,
+      contactoNombre: loc.contactoNombre || '',
+      contactoNumero: loc.contactoNumero || '',
+      direccionEnvio: loc.direccionEnvio || '',
+      locatarioRunt: loc.locatarioRunt || '',
+      nombreComercial: loc.nombreComercial || '',
+      emailComercial: loc.emailComercial || '',
+      revisionMailComercial: loc.revisionMailComercial || false,
+    });
     setSearchTerm('');
     setIsOpen(false);
   };
@@ -179,17 +199,28 @@ export function LocatarioSection({
     <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
         <h3 className="text-sm font-bold text-slate-800">1. Información del Locatario *</h3>
-        <div className="flex gap-2 text-xs">
-          {(['nuevo', 'existente'] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setModoLocatario(mode)}
-              className={`rounded-lg px-3 py-1.5 font-medium ${modoLocatario === mode ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'}`}
-            >
-              {mode === 'nuevo' ? '+ Nuevo Locatario' : 'Buscar Existente'}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-2 text-xs">
+          <button
+            type="button"
+            onClick={() => setModoLocatario('existente')}
+            className={`rounded-lg px-3 py-1.5 font-medium ${modoLocatario === 'existente' ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'}`}
+          >
+            🔍 Buscar Existente
+          </button>
+          <button
+            type="button"
+            onClick={() => setModoLocatario('editar')}
+            className={`rounded-lg px-3 py-1.5 font-medium ${modoLocatario === 'editar' ? 'bg-amber-600 text-white' : 'bg-slate-200 text-slate-700'}`}
+          >
+            ✏️ Editar Asignado
+          </button>
+          <button
+            type="button"
+            onClick={() => setModoLocatario('nuevo')}
+            className={`rounded-lg px-3 py-1.5 font-medium ${modoLocatario === 'nuevo' ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'}`}
+          >
+            + Crear Nuevo
+          </button>
         </div>
       </div>
 
@@ -213,7 +244,7 @@ export function LocatarioSection({
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <Campo label="Nombre / Razón Social *" value={nuevoLocatario.nombreBanco} onChange={(e) => cambiarNuevo('nombreBanco', e.target.value)} />
-          <Campo label="NIT / Cédula *" value={nuevoLocatario.nit} onChange={(e) => cambiarNuevo('nit', e.target.value)} />
+          <Campo label="NIT / Cédula *" value={nuevoLocatario.nit} onChange={(e) => cambiarNuevo('nit', e.target.value)} disabled={modoLocatario === 'editar'} />
           <Campo label="Tipo de Documento" value={nuevoLocatario.tipoDocumento} onChange={(e) => cambiarNuevo('tipoDocumento', e.target.value)} />
           <Campo label="Correo Principal" type="email" value={nuevoLocatario.email} onChange={(e) => cambiarNuevo('email', e.target.value)} />
           <Campo label="Contacto" value={nuevoLocatario.contactoNombre} onChange={(e) => cambiarNuevo('contactoNombre', e.target.value)} />
@@ -239,8 +270,8 @@ export function VehiculoSection({
   nuevoVehiculo,
   setNuevoVehiculo,
 }: {
-  modoVehiculo: 'existente' | 'nuevo';
-  setModoVehiculo: (mode: 'existente' | 'nuevo') => void;
+  modoVehiculo: ModoEntidad;
+  setModoVehiculo: (mode: ModoEntidad) => void;
   vehiculos: Vehiculo[];
   formData: CrearCasoInput;
   handleChange: ChangeHandler;
@@ -262,11 +293,36 @@ export function VehiculoSection({
   }, [data, searchTerm, vehiculos]);
 
   const seleccionado = vehiculos.find((vehiculo) => vehiculo.placa === formData.vehiculoPlaca);
+
   const seleccionar = (vehiculo: Vehiculo) => {
     handleChange({ target: { name: 'vehiculoPlaca', value: vehiculo.placa, type: 'text' } } as unknown as React.ChangeEvent<HTMLInputElement>);
+    setNuevoVehiculo({
+      placa: vehiculo.placa || '',
+      vin: vehiculo.vin || '',
+      marca: vehiculo.marca || '',
+      linea: vehiculo.linea || '',
+      modelo: vehiculo.modelo ? String(vehiculo.modelo) : '',
+      cilindraje: vehiculo.cilindraje || '',
+      motor: vehiculo.motor || '',
+      chasis: vehiculo.chasis || '',
+      serie: vehiculo.serie || '',
+      color: vehiculo.color || '',
+      tipoVehiculo: vehiculo.tipoVehiculo || '',
+      tipoServicio: vehiculo.tipoServicio || '',
+      tipoCarroceria: vehiculo.tipoCarroceria || '',
+      tipoCombustible: vehiculo.tipoCombustible || '',
+      blindaje: vehiculo.blindaje || '',
+      transito: vehiculo.transito || '',
+      departamento: vehiculo.departamento || '',
+      regional: vehiculo.regional || '',
+      empresaTransportadora: vehiculo.empresaTransportadora || '',
+      vigenciaSoat: vehiculo.vigenciaSoat ? vehiculo.vigenciaSoat.slice(0, 10) : '',
+      vigenciaTecno: vehiculo.vigenciaTecno ? vehiculo.vigenciaTecno.slice(0, 10) : '',
+    });
     setSearchTerm('');
     setIsOpen(false);
   };
+
   const cambiarNuevo = (key: keyof NuevoVehiculo, value: string) => setNuevoVehiculo((prev) => ({ ...prev, [key]: value }));
 
   const datosVehiculo: Array<[keyof NuevoVehiculo, string, string?]> = [
@@ -282,12 +338,28 @@ export function VehiculoSection({
     <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
         <h3 className="text-sm font-bold text-slate-800">2. Información del Vehículo *</h3>
-        <div className="flex gap-2 text-xs">
-          {(['nuevo', 'existente'] as const).map((mode) => (
-            <button key={mode} type="button" onClick={() => setModoVehiculo(mode)} className={`rounded-lg px-3 py-1.5 font-medium ${modoVehiculo === mode ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
-              {mode === 'nuevo' ? '+ Nuevo Vehículo' : 'Buscar Existente'}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-2 text-xs">
+          <button
+            type="button"
+            onClick={() => setModoVehiculo('existente')}
+            className={`rounded-lg px-3 py-1.5 font-medium ${modoVehiculo === 'existente' ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'}`}
+          >
+            🔍 Buscar Existente
+          </button>
+          <button
+            type="button"
+            onClick={() => setModoVehiculo('editar')}
+            className={`rounded-lg px-3 py-1.5 font-medium ${modoVehiculo === 'editar' ? 'bg-amber-600 text-white' : 'bg-slate-200 text-slate-700'}`}
+          >
+            ✏️ Editar Asignado
+          </button>
+          <button
+            type="button"
+            onClick={() => setModoVehiculo('nuevo')}
+            className={`rounded-lg px-3 py-1.5 font-medium ${modoVehiculo === 'nuevo' ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'}`}
+          >
+            + Crear Nuevo
+          </button>
         </div>
       </div>
 
@@ -311,13 +383,21 @@ export function VehiculoSection({
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           {datosVehiculo.map(([key, label, type]) => (
-            <Campo key={key} label={label} type={type} value={nuevoVehiculo[key]} onChange={(e) => cambiarNuevo(key, e.target.value)} />
+            <Campo
+              key={key}
+              label={label}
+              type={type}
+              value={nuevoVehiculo[key]}
+              onChange={(e) => cambiarNuevo(key, e.target.value)}
+              disabled={modoVehiculo === 'editar' && key === 'placa'}
+            />
           ))}
         </div>
       )}
     </section>
   );
 }
+
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'basico', label: 'Básico' },
@@ -339,7 +419,16 @@ export function CasoFormTabsNav({
   return (
     <nav className="flex overflow-x-auto rounded-t-lg border-b bg-slate-50 text-xs font-medium">
       {TABS.map((tab) => (
-        <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} className={`whitespace-nowrap border-b-2 px-4 py-3 font-semibold ${activeTab === tab.id ? 'border-blue-600 bg-white text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+        <button
+          key={tab.id}
+          type="button"
+          onClick={() => setActiveTab(tab.id)}
+          className={`whitespace-nowrap border-b-2 px-4 py-3 font-semibold ${
+            activeTab === tab.id
+              ? 'border-blue-600 bg-white text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-700'
+          }`}
+        >
           {tab.label}
         </button>
       ))}

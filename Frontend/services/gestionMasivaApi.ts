@@ -1,8 +1,5 @@
+import { apiClient } from "@/api/client"; 
 import { Caso, Estado } from '@/types/leasing';
-
-const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL || 'http://10.0.4.4:5001'
-).replace(/\/$/, '');
 
 export interface CambiarEstadosMasivoInput {
   casoIds: number[];
@@ -20,32 +17,27 @@ export interface CambiarEstadosMasivoResponse {
 
 export const gestionMasivaApi = {
   getEstados: async (): Promise<Estado[]> => {
-    const response = await fetch(`${API_BASE_URL}/estados`);
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al obtener los catálogos');
+    try {
+      const response = await apiClient.get<Estado[]>('/estados');
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (error: any) {
+      const mensaje = error?.response?.data?.message || 'Error al obtener los catálogos';
+      throw new Error(mensaje);
     }
-
-    const data: unknown = await response.json();
-
-    return Array.isArray(data) ? (data as Estado[]) : [];
   },
 
   cambiarEstadosMasivo: async (
     datos: CambiarEstadosMasivoInput,
   ): Promise<CambiarEstadosMasivoResponse> => {
-    const response = await fetch(`${API_BASE_URL}/gestion-masiva/estado`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(datos),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al actualizar los casos');
+    try {
+      const response = await apiClient.patch<CambiarEstadosMasivoResponse>(
+        '/gestion-masiva/estado',
+        datos
+      );
+      return response.data;
+    } catch (error: any) {
+      const mensaje = error?.response?.data?.message || 'Error al actualizar los casos';
+      throw new Error(mensaje);
     }
-
-    return response.json();
   },
 };

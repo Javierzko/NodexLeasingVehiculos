@@ -148,7 +148,7 @@ export class SeguimientoPortalService {
       },
       locatario: {
         nit: caso.locatario.nit,
-        nombre: caso.locatario.contactoNombre ?? caso.locatario.nombreBanco,
+        nombre: caso.locatario.nombreBanco ?? caso.locatario.nombreBanco,
       },
       vehiculo: caso.vehiculo,
       gestionActual: {

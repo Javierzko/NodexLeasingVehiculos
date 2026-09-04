@@ -1,5 +1,7 @@
 // services/portalConsultaApi.ts
 
+import { apiClient } from "@/api/client"; // Ajusta la ruta de tu apiClient según la estructura de tu proyecto
+
 export interface PortalConsultaInput {
   numeroContrato: string;
   documento: string;
@@ -75,50 +77,42 @@ export interface PortalSeguimientoResponse {
   ultimaActualizacion: string | null;
 }
 
-const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL || 'http://10.0.4.4:5001'
-).replace(/\/$/, '');
+function obtenerMensajeError(error: any): string {
+  const message = error?.response?.data?.message;
 
-const obtenerMensajeError = async (response: Response) => {
-  const body = await response.json().catch(() => null);
-
-  if (Array.isArray(body?.message)) {
-    return body.message.join(', ');
+  if (Array.isArray(message)) {
+    return message.join(', ');
   }
 
-  return body?.message || 'No fue posible consultar el trámite.';
-};
+  return message || 'No fue posible consultar el trámite.';
+}
 
 export const portalConsultaApi = {
   consultar: async (
     datos: PortalConsultaInput,
   ): Promise<PortalConsultaResponse> => {
-    const response = await fetch(`${API_BASE_URL}/portal-consulta`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(datos),
-    });
-
-    if (!response.ok) {
-      throw new Error(await obtenerMensajeError(response));
+    try {
+      const response = await apiClient.post<PortalConsultaResponse>(
+        '/portal-consulta',
+        datos
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(obtenerMensajeError(error));
     }
-
-    return response.json() as Promise<PortalConsultaResponse>;
   },
 
   consultarSeguimiento: async (
     datos: PortalConsultaInput,
   ): Promise<PortalSeguimientoResponse> => {
-    const response = await fetch(`${API_BASE_URL}/seguimiento-portal`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(datos),
-    });
-
-    if (!response.ok) {
-      throw new Error(await obtenerMensajeError(response));
+    try {
+      const response = await apiClient.post<PortalSeguimientoResponse>(
+        '/seguimiento-portal',
+        datos
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(obtenerMensajeError(error));
     }
-
-    return response.json() as Promise<PortalSeguimientoResponse>;
   },
 };

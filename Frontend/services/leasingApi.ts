@@ -1,3 +1,7 @@
+//raiz services/leasingApi.ts
+
+
+import { apiClient } from '@/api/client';
 import {
   Caso,
   Locatario,
@@ -8,78 +12,35 @@ import {
   CrearCasoInput,
   ProcesoJuridicoInput,
   AuditoriaMultaInput,
+  TipoBusquedaGestion,
+  BuscarCasoGestionResponse,
+  CrearGestionInput,
+  GestionCaso,
 } from '@/types/leasing';
 
-export type TipoBusquedaGestion = 'contrato' | 'placa' | 'nit';
-
-export interface BuscarCasoGestionResponse {
-  tipo: TipoBusquedaGestion;
-  busqueda: string;
-  encontrado: boolean;
-  data: Caso[];
-}
-
-export interface CrearGestionInput {
-  casoId: number;
-  tipoObservacion: string;
-  comentario: string;
-  fechaProximaGestion?: string;
-  analistaResponsable: string;
-}
-
-export interface GestionCaso {
-  id: number;
-  casoId: number;
-  tipoObservacion: string;
-  comentario: string;
-  fechaGestion: string;
-  fechaProximaGestion?: string | null;
-  analistaResponsable: string;
-}
-
-const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL || 'http://10.0.4.4:5001'
-).replace(/\/$/, '');
-
-interface BackendErrorResponse {
-  message?: string | string[];
-  error?: string;
-  statusCode?: number;
-}
-
-async function handleResponse<T>(
-  res: Response,
+function handleAxiosError(
+  error: any,
   defaultErrorMessage: string,
   options?: { silentStatuses?: number[] }
-): Promise<T> {
-  if (!res.ok) {
-    let errorMsg = defaultErrorMessage;
+): never {
+  const status = error?.response?.status;
+  const data = error?.response?.data;
 
-    try {
-      const data: BackendErrorResponse = await res.json();
-
-      if (!options?.silentStatuses?.includes(res.status)) {
-        console.error('API Error:', {
-          status: res.status,
-          data,
-        });
-      }
-
-      if (data.message) {
-        errorMsg = Array.isArray(data.message)
-          ? data.message.join(', ')
-          : data.message;
-      } else if (data.error) {
-        errorMsg = data.error;
-      }
-    } catch {}
-
-    throw new Error(`${errorMsg} (HTTP ${res.status})`);
+  if (status && !options?.silentStatuses?.includes(status)) {
+    console.error('API Error:', { status, data });
   }
 
-  if (res.status === 204) return undefined as T;
+  let errorMsg = defaultErrorMessage;
 
-  return res.json() as Promise<T>;
+  if (data?.message) {
+    errorMsg = Array.isArray(data.message)
+      ? data.message.join(', ')
+      : data.message;
+  } else if (data?.error) {
+    errorMsg = data.error;
+  }
+
+  throw new Error(`${errorMsg}${status ? ` (HTTP ${status})` : ''}`);
 }
 
 function sanitizePayload<T>(datos: T): T {
@@ -110,87 +71,87 @@ function sanitizePayload<T>(datos: T): T {
   return datos;
 }
 
-const jsonHeaders = {
-  'Content-Type': 'application/json',
-};
-
 export const leasingApi = {
   // ===================================================
   // LOCATARIOS
   // ===================================================
 
   getLocatarios: async (): Promise<Locatario[]> => {
-    const res = await fetch(`${API_BASE_URL}/locatarios`);
-
-    return handleResponse(
-      res,
-      'Error al obtener la lista de locatarios.'
-    );
+    try {
+      const res = await apiClient.get<Locatario[]>('/locatarios');
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(
+        error,
+        'Error al obtener la lista de locatarios.'
+      );
+    }
   },
 
   getLocatarioByIdentificacion: async (
     identificacion: string
   ): Promise<Locatario> => {
-    const res = await fetch(
-      `${API_BASE_URL}/locatarios/identificacion/${encodeURIComponent(
-        identificacion
-      )}`
-    );
-
-    return handleResponse(
-      res,
-      'Error al obtener el locatario por identificación.',
-      { silentStatuses: [404] }
-    );
+    try {
+      const res = await apiClient.get<Locatario>(
+        `/locatarios/identificacion/${encodeURIComponent(identificacion)}`
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(
+        error,
+        'Error al obtener el locatario por identificación.',
+        { silentStatuses: [404] }
+      );
+    }
   },
 
-  getLocatarioById: async (
-    id: number
-  ): Promise<Locatario> => {
-    const res = await fetch(
-      `${API_BASE_URL}/locatarios/${encodeURIComponent(id)}`
-    );
-
-    return handleResponse(
-      res,
-      'Error al obtener el locatario por ID.'
-    );
+  getLocatarioById: async (id: number): Promise<Locatario> => {
+    try {
+      const res = await apiClient.get<Locatario>(
+        `/locatarios/${encodeURIComponent(id)}`
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(error, 'Error al obtener el locatario por ID.');
+    }
   },
 
-  createLocatario: async (
+  createLocatario: async (datos: Partial<Locatario>): Promise<Locatario> => {
+    try {
+      const res = await apiClient.post<Locatario>(
+        '/locatarios',
+        sanitizePayload(datos)
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(error, 'Error al registrar el locatario.');
+    }
+  },
+
+  updateLocatario: async (
+    id: number,
     datos: Partial<Locatario>
   ): Promise<Locatario> => {
-    const res = await fetch(
-      `${API_BASE_URL}/locatarios`,
-      {
-        method: 'POST',
-        headers: jsonHeaders,
-        body: JSON.stringify(
-          sanitizePayload(datos)
-        ),
-      }
-    );
-
-    return handleResponse(
-      res,
-      'Error al registrar el locatario.'
-    );
+    try {
+      const res = await apiClient.patch<Locatario>(
+        `/locatarios/${encodeURIComponent(id)}`,
+        sanitizePayload(datos)
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(error, 'Error al actualizar el locatario.');
+    }
   },
 
-  deleteLocatario: async (
-    id: number
-  ): Promise<void> => {
-    const res = await fetch(
-      `${API_BASE_URL}/casos/locatario/${encodeURIComponent(id)}`,
-      {
-        method: 'DELETE',
-      }
-    );
 
-    return handleResponse(
-      res,
-      'Error al eliminar el locatario.'
-    );
+  deleteLocatario: async (id: number): Promise<void> => {
+    try {
+      await apiClient.delete(
+        `/casos/locatario/${encodeURIComponent(id)}`
+      );
+    } catch (error) {
+      return handleAxiosError(error, 'Error al eliminar el locatario.');
+    }
   },
 
   // ===================================================
@@ -198,85 +159,65 @@ export const leasingApi = {
   // ===================================================
 
   getVehiculos: async (): Promise<Vehiculo[]> => {
-    const res = await fetch(
-      `${API_BASE_URL}/vehiculos`
-    );
-
-    return handleResponse(
-      res,
-      'Error al obtener la lista de vehículos.'
-    );
+    try {
+      const res = await apiClient.get<Vehiculo[]>('/vehiculos');
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(
+        error,
+        'Error al obtener la lista de vehículos.'
+      );
+    }
   },
 
-  getVehiculoByPlaca: async (
-    placa: string
-  ): Promise<Vehiculo> => {
-    const res = await fetch(
-      `${API_BASE_URL}/vehiculos/${encodeURIComponent(placa)}`
-    );
-
-    return handleResponse(
-      res,
-      'Error al obtener el vehículo por placa.',
-      { silentStatuses: [404] }
-    );
+  getVehiculoByPlaca: async (placa: string): Promise<Vehiculo> => {
+    try {
+      const res = await apiClient.get<Vehiculo>(
+        `/vehiculos/${encodeURIComponent(placa)}`
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(
+        error,
+        'Error al obtener el vehículo por placa.',
+        { silentStatuses: [404] }
+      );
+    }
   },
 
-  createVehiculo: async (
-    datos: Partial<Vehiculo>
-  ): Promise<Vehiculo> => {
-    const res = await fetch(
-      `${API_BASE_URL}/vehiculos`,
-      {
-        method: 'POST',
-        headers: jsonHeaders,
-        body: JSON.stringify(
-          sanitizePayload(datos)
-        ),
-      }
-    );
-
-    return handleResponse(
-      res,
-      'Error al registrar el vehículo.'
-    );
+  createVehiculo: async (datos: Partial<Vehiculo>): Promise<Vehiculo> => {
+    try {
+      const res = await apiClient.post<Vehiculo>(
+        '/vehiculos',
+        sanitizePayload(datos)
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(error, 'Error al registrar el vehículo.');
+    }
   },
 
   updateVehiculo: async (
     placa: string,
     datos: Partial<Vehiculo>
   ): Promise<Vehiculo> => {
-    const res = await fetch(
-      `${API_BASE_URL}/vehiculos/${encodeURIComponent(placa)}`,
-      {
-        method: 'PATCH',
-        headers: jsonHeaders,
-        body: JSON.stringify(
-          sanitizePayload(datos)
-        ),
-      }
-    );
-
-    return handleResponse(
-      res,
-      'Error al actualizar el vehículo.'
-    );
+    try {
+      const res = await apiClient.patch<Vehiculo>(
+        `/vehiculos/${encodeURIComponent(placa)}`,
+        sanitizePayload(datos)
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(error, 'Error al actualizar el vehículo.');
+    }
   },
 
-  deleteVehiculo: async (
-    placa: string
-  ): Promise<void> => {
-    const res = await fetch(
-      `${API_BASE_URL}/vehiculos/${encodeURIComponent(placa)}`,
-      {
-        method: 'DELETE',
-      }
-    );
-
-    return handleResponse(
-      res,
-      'Error al eliminar el vehículo.'
-    );
+  deleteVehiculo: async (placa: string): Promise<void> => {
+    try {
+      await apiClient.delete(`/vehiculos/${encodeURIComponent(placa)}`);
+    } catch (error) {
+      return handleAxiosError(error, 'Error al eliminar el vehículo.');
+    }
   },
 
   // ===================================================
@@ -284,34 +225,29 @@ export const leasingApi = {
   // ===================================================
 
   getPropietarios: async (): Promise<Propietario[]> => {
-    const res = await fetch(
-      `${API_BASE_URL}/propietarios`
-    );
-
-    return handleResponse(
-      res,
-      'Error al obtener la lista de propietarios.'
-    );
+    try {
+      const res = await apiClient.get<Propietario[]>('/propietarios');
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(
+        error,
+        'Error al obtener la lista de propietarios.'
+      );
+    }
   },
 
   createPropietario: async (
     datos: Partial<Propietario>
   ): Promise<Propietario> => {
-    const res = await fetch(
-      `${API_BASE_URL}/propietarios`,
-      {
-        method: 'POST',
-        headers: jsonHeaders,
-        body: JSON.stringify(
-          sanitizePayload(datos)
-        ),
-      }
-    );
-
-    return handleResponse(
-      res,
-      'Error al registrar el propietario.'
-    );
+    try {
+      const res = await apiClient.post<Propietario>(
+        '/propietarios',
+        sanitizePayload(datos)
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(error, 'Error al registrar el propietario.');
+    }
   },
 
   // ===================================================
@@ -319,109 +255,77 @@ export const leasingApi = {
   // ===================================================
 
   getCasos: async (): Promise<Caso[]> => {
-    const res = await fetch(
-      `${API_BASE_URL}/casos`
-    );
-
-    return handleResponse(
-      res,
-      'Error al obtener los casos.'
-    );
+    try {
+      const res = await apiClient.get<Caso[]>('/casos');
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(error, 'Error al obtener los casos.');
+    }
   },
 
-  getCasoById: async (
-    id: number
-  ): Promise<Caso> => {
-    const res = await fetch(
-      `${API_BASE_URL}/casos/${encodeURIComponent(id)}`
-    );
-
-    return handleResponse(
-      res,
-      'Error al obtener el caso por ID.'
-    );
+  getCasoById: async (id: number): Promise<Caso> => {
+    try {
+      const res = await apiClient.get<Caso>(
+        `/casos/${encodeURIComponent(id)}`
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(error, 'Error al obtener el caso por ID.');
+    }
   },
 
-  getCasoByContrato: async (
-    numeroContrato: string
-  ): Promise<Caso> => {
-    const res = await fetch(
-      `${API_BASE_URL}/casos/contrato/${encodeURIComponent(
-        numeroContrato
-      )}`
-    );
-
-    return handleResponse(
-      res,
-      'Error al obtener el caso por número de contrato.'
-    );
+  getCasoByContrato: async (numeroContrato: string): Promise<Caso> => {
+    try {
+      const res = await apiClient.get<Caso>(
+        `/casos/contrato/${encodeURIComponent(numeroContrato)}`
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(
+        error,
+        'Error al obtener el caso por número de contrato.'
+      );
+    }
   },
 
-  createCaso: async (
-    datos: CrearCasoInput
-  ): Promise<Caso> => {
-    const res = await fetch(
-      `${API_BASE_URL}/casos`,
-      {
-        method: 'POST',
-        headers: jsonHeaders,
-        body: JSON.stringify(
-          sanitizePayload(datos)
-        ),
-      }
-    );
-
-    return handleResponse(
-      res,
-      'Error al crear el caso de leasing.'
-    );
+  createCaso: async (datos: CrearCasoInput): Promise<Caso> => {
+    try {
+      const res = await apiClient.post<Caso>(
+        '/casos',
+        sanitizePayload(datos)
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(error, 'Error al crear el caso de leasing.');
+    }
   },
 
   updateCaso: async (
     id: number,
     datos: Partial<CrearCasoInput>
   ): Promise<Caso> => {
-    const payload = sanitizePayload(datos);
+    try {
+      const payload = sanitizePayload(datos);
 
-    console.log(
-      'PAYLOAD QUE SALE DEL FRONT:',
-      payload
-    );
-
-    console.log(
-      'PROCESO JURIDICO QUE SALE DEL FRONT:',
-      payload?.procesoJuridico
-    );
-
-    const res = await fetch(
-      `${API_BASE_URL}/casos/${encodeURIComponent(id)}`,
-      {
-        method: 'PATCH',
-        headers: jsonHeaders,
-        body: JSON.stringify(payload),
-      }
-    );
-
-    return handleResponse(
-      res,
-      'Error al actualizar el caso de leasing.'
-    );
+      const res = await apiClient.patch<Caso>(
+        `/casos/${encodeURIComponent(id)}`,
+        payload
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(
+        error,
+        'Error al actualizar el caso de leasing.'
+      );
+    }
   },
 
-  deleteCaso: async (
-    id: number
-  ): Promise<void> => {
-    const res = await fetch(
-      `${API_BASE_URL}/casos/${encodeURIComponent(id)}`,
-      {
-        method: 'DELETE',
-      }
-    );
-
-    return handleResponse(
-      res,
-      'Error al eliminar el caso de leasing.'
-    );
+  deleteCaso: async (id: number): Promise<void> => {
+    try {
+      await apiClient.delete(`/casos/${encodeURIComponent(id)}`);
+    } catch (error) {
+      return handleAxiosError(error, 'Error al eliminar el caso de leasing.');
+    }
   },
 
   // ===================================================
@@ -432,23 +336,18 @@ export const leasingApi = {
     procesoJuridicoId: number,
     datos: ProcesoJuridicoInput
   ): Promise<ProcesoJuridico> => {
-    const res = await fetch(
-      `${API_BASE_URL}/proceso-juridico/${encodeURIComponent(
-        procesoJuridicoId
-      )}`,
-      {
-        method: 'PATCH',
-        headers: jsonHeaders,
-        body: JSON.stringify(
-          sanitizePayload(datos)
-        ),
-      }
-    );
-
-    return handleResponse(
-      res,
-      'Error al actualizar el proceso jurídico.'
-    );
+    try {
+      const res = await apiClient.patch<ProcesoJuridico>(
+        `/proceso-juridico/${encodeURIComponent(procesoJuridicoId)}`,
+        sanitizePayload(datos)
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(
+        error,
+        'Error al actualizar el proceso jurídico.'
+      );
+    }
   },
 
   // ===================================================
@@ -459,23 +358,18 @@ export const leasingApi = {
     auditoriaId: number,
     datos: AuditoriaMultaInput
   ): Promise<AuditoriaMulta> => {
-    const res = await fetch(
-      `${API_BASE_URL}/auditoria-multas/${encodeURIComponent(
-        auditoriaId
-      )}`,
-      {
-        method: 'PATCH',
-        headers: jsonHeaders,
-        body: JSON.stringify(
-          sanitizePayload(datos)
-        ),
-      }
-    );
-
-    return handleResponse(
-      res,
-      'Error al actualizar la auditoría de multas.'
-    );
+    try {
+      const res = await apiClient.patch<AuditoriaMulta>(
+        `/auditoria-multas/${encodeURIComponent(auditoriaId)}`,
+        sanitizePayload(datos)
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(
+        error,
+        'Error al actualizar la auditoría de multas.'
+      );
+    }
   },
 
   // ===================================================
@@ -486,50 +380,44 @@ export const leasingApi = {
     tipo: TipoBusquedaGestion,
     q: string
   ): Promise<BuscarCasoGestionResponse> => {
-    const res = await fetch(
-      `${API_BASE_URL}/gestion/buscar?tipo=${encodeURIComponent(
-        tipo
-      )}&q=${encodeURIComponent(q)}`
-    );
-
-    return handleResponse(
-      res,
-      'Error al buscar el caso para gestión.'
-    );
+    try {
+      const res = await apiClient.get<BuscarCasoGestionResponse>(
+        `/gestion/buscar?tipo=${encodeURIComponent(tipo)}&q=${encodeURIComponent(q)}`
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(
+        error,
+        'Error al buscar el caso para gestión.'
+      );
+    }
   },
 
-  crearGestion: async (
-    datos: CrearGestionInput
-  ): Promise<GestionCaso> => {
-    const res = await fetch(
-      `${API_BASE_URL}/gestion`,
-      {
-        method: 'POST',
-        headers: jsonHeaders,
-        body: JSON.stringify(
-          sanitizePayload(datos)
-        ),
-      }
-    );
-
-    return handleResponse(
-      res,
-      'Error al registrar la gestión.'
-    );
+  crearGestion: async (datos: CrearGestionInput): Promise<GestionCaso> => {
+    try {
+      const res = await apiClient.post<GestionCaso>(
+        '/gestion',
+        sanitizePayload(datos)
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(error, 'Error al registrar la gestión.');
+    }
   },
 
   obtenerHistorialGestiones: async (
     casoId: number
   ): Promise<GestionCaso[]> => {
-    const res = await fetch(
-      `${API_BASE_URL}/gestion/${encodeURIComponent(
-        casoId
-      )}/gestiones`
-    );
-
-    return handleResponse(
-      res,
-      'Error al obtener el historial de gestiones.'
-    );
+    try {
+      const res = await apiClient.get<GestionCaso[]>(
+        `/gestion/${encodeURIComponent(casoId)}/gestiones`
+      );
+      return res.data;
+    } catch (error) {
+      return handleAxiosError(
+        error,
+        'Error al obtener el historial de gestiones.'
+      );
+    }
   },
 };

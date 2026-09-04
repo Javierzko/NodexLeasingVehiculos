@@ -18,7 +18,7 @@ import {
 
 // 1. Obtener todos los casos
 export const useCasos = () => {
-  return useQuery({
+  return useQuery<Caso[]>({
     queryKey: ['casos'],
     queryFn: () => leasingApi.getCasos(),
   });
@@ -26,7 +26,7 @@ export const useCasos = () => {
 
 // 2. Obtener un caso por ID
 export const useCasoById = (id: number) => {
-  return useQuery({
+  return useQuery<Caso>({
     queryKey: ['caso', 'id', id],
     queryFn: () => leasingApi.getCasoById(id),
     enabled: !!id,
@@ -35,7 +35,7 @@ export const useCasoById = (id: number) => {
 
 // 3. Buscar un caso por Número de Contrato
 export const useCasoByContrato = (numeroContrato: string) => {
-  return useQuery({
+  return useQuery<Caso>({
     queryKey: ['caso', 'contrato', numeroContrato],
     queryFn: () => leasingApi.getCasoByContrato(numeroContrato),
     enabled: !!numeroContrato,
@@ -44,7 +44,7 @@ export const useCasoByContrato = (numeroContrato: string) => {
 
 // 4. Obtener todos los locatarios
 export const useLocatarios = () => {
-  return useQuery({
+  return useQuery<Locatario[]>({
     queryKey: ['locatarios'],
     queryFn: () => leasingApi.getLocatarios(),
   });
@@ -52,7 +52,7 @@ export const useLocatarios = () => {
 
 // 5. Buscar locatario por NIT / Identificación
 export const useLocatarioByIdentificacion = (nit: string) => {
-  return useQuery({
+  return useQuery<Locatario>({
     queryKey: ['locatario', nit],
     queryFn: () => leasingApi.getLocatarioByIdentificacion(nit),
     enabled: !!nit,
@@ -61,7 +61,7 @@ export const useLocatarioByIdentificacion = (nit: string) => {
 
 // 6. Obtener todos los vehículos
 export const useVehiculos = () => {
-  return useQuery({
+  return useQuery<Vehiculo[]>({
     queryKey: ['vehiculos'],
     queryFn: () => leasingApi.getVehiculos(),
   });
@@ -69,7 +69,7 @@ export const useVehiculos = () => {
 
 // 7. Buscar vehículo por Placa
 export const useVehiculoByPlaca = (placa: string) => {
-  return useQuery({
+  return useQuery<Vehiculo>({
     queryKey: ['vehiculo', placa],
     queryFn: () => leasingApi.getVehiculoByPlaca(placa),
     enabled: !!placa,
@@ -78,7 +78,7 @@ export const useVehiculoByPlaca = (placa: string) => {
 
 // 8. Obtener todos los propietarios
 export const usePropietarios = () => {
-  return useQuery({
+  return useQuery<Propietario[]>({
     queryKey: ['propietarios'],
     queryFn: () => leasingApi.getPropietarios(),
   });
@@ -183,21 +183,23 @@ export const useUpdateProcesoJuridico = () => {
 
   return useMutation({
     mutationFn: ({
-      casoId,
+      procesoJuridicoId,
       datos,
     }: {
-      casoId: number;
+      procesoJuridicoId: number;
       datos: ProcesoJuridicoInput;
-    }) => leasingApi.updateProcesoJuridico(casoId, datos),
+    }) => leasingApi.updateProcesoJuridico(procesoJuridicoId, datos),
 
-    onSuccess: (_, variables) => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({
         queryKey: ['casos'],
       });
 
-      queryClient.invalidateQueries({
-        queryKey: ['caso', 'id', variables.casoId],
-      });
+      if (res?.casoId) {
+        queryClient.invalidateQueries({
+          queryKey: ['caso', 'id', res.casoId],
+        });
+      }
     },
   });
 };
@@ -208,21 +210,23 @@ export const useUpdateAuditoriaMulta = () => {
 
   return useMutation({
     mutationFn: ({
-      casoId,
+      auditoriaId,
       datos,
     }: {
-      casoId: number;
+      auditoriaId: number;
       datos: AuditoriaMultaInput;
-    }) => leasingApi.updateAuditoriaMulta(casoId, datos),
+    }) => leasingApi.updateAuditoriaMulta(auditoriaId, datos),
 
-    onSuccess: (_, variables) => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({
         queryKey: ['casos'],
       });
 
-      queryClient.invalidateQueries({
-        queryKey: ['caso', 'id', variables.casoId],
-      });
+      if (res?.casoId) {
+        queryClient.invalidateQueries({
+          queryKey: ['caso', 'id', res.casoId],
+        });
+      }
     },
   });
 };

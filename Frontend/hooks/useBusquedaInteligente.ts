@@ -1,11 +1,8 @@
 //raiz hooks/useBusquedaInteligente.ts
 
+import { leasingApi } from '../services/leasingApi';
 import { useQuery } from '@tanstack/react-query';
-import {
-  leasingApi,
-  TipoBusquedaGestion,
-  BuscarCasoGestionResponse,
-} from '@/services/leasingApi';
+import {TipoBusquedaGestion,BuscarCasoGestionResponse,} from '../types/leasing';
 
 export type TipoBusqueda = TipoBusquedaGestion;
 

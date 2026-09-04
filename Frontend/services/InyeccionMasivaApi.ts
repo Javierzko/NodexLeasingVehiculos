@@ -1,3 +1,5 @@
+import { apiClient } from "@/api/client"; 
+
 export interface VehiculoImportacion {
   numeroCaso?: string;
   radicadoBizagi?: string;
@@ -58,40 +60,34 @@ export interface ResultadoImportacion {
   casos?: unknown[];
 }
 
-const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL || 'http://10.0.4.4:5001'
-).replace(/\/$/, '');
-
 export async function importarVehiculos(
   vehiculos: VehiculoImportacion[],
 ): Promise<ResultadoImportacion> {
-  const response = await fetch(`${API_BASE_URL}/inyeccion-masiva/vehiculos`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ vehiculos }),
-  });
-
-  if (!response.ok) {
-    const mensaje = await response.text();
-    throw new Error(mensaje || 'No fue posible importar los vehículos.');
+  try {
+    const response = await apiClient.post<ResultadoImportacion>(
+      '/inyeccion-masiva/vehiculos',
+      { vehiculos }
+    );
+    return response.data;
+  } catch (error: any) {
+    const mensaje =
+      error?.response?.data?.message || 'No fue posible importar los vehículos.';
+    throw new Error(Array.isArray(mensaje) ? mensaje.join(', ') : mensaje);
   }
-
-  return response.json();
 }
 
 export async function importarCasos(
   casos: CasoImportacion[],
 ): Promise<ResultadoImportacion> {
-  const response = await fetch(`${API_BASE_URL}/inyeccion-masiva/casos`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ casos }),
-  });
-
-  if (!response.ok) {
-    const mensaje = await response.text();
-    throw new Error(mensaje || 'No fue posible importar los casos.');
+  try {
+    const response = await apiClient.post<ResultadoImportacion>(
+      '/inyeccion-masiva/casos',
+      { casos }
+    );
+    return response.data;
+  } catch (error: any) {
+    const mensaje =
+      error?.response?.data?.message || 'No fue posible importar los casos.';
+    throw new Error(Array.isArray(mensaje) ? mensaje.join(', ') : mensaje);
   }
-
-  return response.json();
 }

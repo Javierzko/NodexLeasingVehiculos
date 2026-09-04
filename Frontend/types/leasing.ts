@@ -1,5 +1,3 @@
-//raiz types/leasing.ts
-
 export interface Estado {
   id: number;
   tipo: string;
@@ -283,4 +281,34 @@ export interface CrearCasoInput {
   vehiculoPlaca: string;
   procesoJuridico?: ProcesoJuridicoInput;
   auditoriaMulta?: AuditoriaMultaInput;
+}
+
+// ==========================================
+// TIPOS DE GESTIÓN DE CASOS
+// ==========================================
+export type TipoBusquedaGestion = 'contrato' | 'placa' | 'nit';
+
+export interface BuscarCasoGestionResponse {
+  tipo: TipoBusquedaGestion;
+  busqueda: string;
+  encontrado: boolean;
+  data: Caso[];
+}
+
+export interface CrearGestionInput {
+  casoId: number;
+  tipoObservacion: string;
+  comentario: string;
+  fechaProximaGestion?: string;
+  analistaResponsable: string;
+}
+
+export interface GestionCaso {
+  id: number;
+  casoId: number;
+  tipoObservacion: string;
+  comentario: string;
+  fechaGestion: string;
+  fechaProximaGestion?: string | null;
+  analistaResponsable: string;
 }

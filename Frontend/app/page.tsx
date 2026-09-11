@@ -78,6 +78,17 @@ export default function LeasingPage() {
     }
   }, []);
 
+  //=============== cambio para abrir y cerrar =====================
+
+const handleCasoGuardado = async () => {
+  setModalAbierto(false);
+  setCasoAEditar(null);
+  await cargarCasos();
+};
+
+
+
+
   useEffect(() => {
     void cargarCasos();
   }, [cargarCasos]);
@@ -500,7 +511,7 @@ export default function LeasingPage() {
           setModalAbierto(false);
           setCasoAEditar(null);
         }}
-        onCasoCreado={cargarCasos}
+        onCasoCreado={handleCasoGuardado}
         casoAEditar={casoAEditar}
       />
 

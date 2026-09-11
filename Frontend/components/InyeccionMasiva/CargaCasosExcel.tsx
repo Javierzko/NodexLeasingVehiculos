@@ -73,10 +73,11 @@ function convertirFila(fila: FilaExcel): CasoImportacion {
 
 function validarFilas(filas: CasoImportacion[]): ErrorFila[] {
   const errores: ErrorFila[] = [];
+  
+  // Mapas para validar Unicidad Obligatoria por archivo
   const contratos = new Map<string, number>();
   const radicados = new Map<string, number>();
-  const placas = new Map<string, number>();
-  const nits = new Map<string, number>();
+  
   const estados = new Set(['CONTRATO VIGENTE', 'CONTRATO VENCIDO']);
 
   filas.forEach((fila, indice) => {
@@ -86,23 +87,38 @@ function validarFilas(filas: CasoImportacion[]): ErrorFila[] {
     const placa = fila.placa.trim().toUpperCase();
     const nit = fila.nitLocatario.trim();
 
+    // Validaciones de presencia (Campos requeridos)
     if (!radicado) errores.push({ fila: numero, campo: 'Radicado Bizagi', mensaje: 'Es obligatorio.' });
     if (!contrato) errores.push({ fila: numero, campo: 'Numero Contrato', mensaje: 'Es obligatorio.' });
     if (!placa) errores.push({ fila: numero, campo: 'Placa', mensaje: 'Es obligatoria.' });
     if (!nit) errores.push({ fila: numero, campo: 'Nit del Locatario', mensaje: 'Es obligatorio.' });
 
-    if (contratos.has(contrato)) errores.push({ fila: numero, campo: 'Numero Contrato', mensaje: `Repetido en la fila ${contratos.get(contrato)}.` });
-    else if (contrato) contratos.set(contrato, numero);
-    if (radicados.has(radicado)) errores.push({ fila: numero, campo: 'Radicado Bizagi', mensaje: `Repetido en la fila ${radicados.get(radicado)}.` });
-    else if (radicado) radicados.set(radicado, numero);
-    if (placas.has(placa)) errores.push({ fila: numero, campo: 'Placa', mensaje: `Repetida en la fila ${placas.get(placa)}.` });
-    else if (placa) placas.set(placa, numero);
-    if (nits.has(nit)) errores.push({ fila: numero, campo: 'Nit del Locatario', mensaje: `Repetido en la fila ${nits.get(nit)}.` });
-    else if (nit) nits.set(nit, numero);
+    // Validaciones de UNICIDAD E STRICTA
+    if (contratos.has(contrato)) {
+      errores.push({ fila: numero, campo: 'Numero Contrato', mensaje: `Repetido en la fila ${contratos.get(contrato)}.` });
+    } else if (contrato) {
+      contratos.set(contrato, numero);
+    }
 
-    if (fila.fechaAsignacion && !new Date(fila.fechaAsignacion).getTime()) errores.push({ fila: numero, campo: 'Fecha Asignacion', mensaje: 'Tiene un formato inválido.' });
-    if (fila.valorOpcionCompra !== undefined && !Number.isFinite(fila.valorOpcionCompra)) errores.push({ fila: numero, campo: 'Valor Opcion Compra', mensaje: 'Debe ser numérico.' });
-    if (fila.contratoVigente && !estados.has(fila.contratoVigente)) errores.push({ fila: numero, campo: 'Contrato Vigente', mensaje: 'Use CONTRATO VIGENTE o CONTRATO VENCIDO.' });
+    if (radicados.has(radicado)) {
+      errores.push({ fila: numero, campo: 'Radicado Bizagi', mensaje: `Repetido en la fila ${radicados.get(radicado)}.` });
+    } else if (radicado) {
+      radicados.set(radicado, numero);
+    }
+
+    // Nota: La placa, el NIT y el Email pueden repetirse entre filas sin restricción,
+    // siempre que cada fila mantenga un Numero Contrato y Radicado Bizagi único.
+
+    // Validaciones de Formato y Dominio
+    if (fila.fechaAsignacion && !new Date(fila.fechaAsignacion).getTime()) {
+      errores.push({ fila: numero, campo: 'Fecha Asignacion', mensaje: 'Tiene un formato inválido.' });
+    }
+    if (fila.valorOpcionCompra !== undefined && !Number.isFinite(fila.valorOpcionCompra)) {
+      errores.push({ fila: numero, campo: 'Valor Opcion Compra', mensaje: 'Debe ser numérico.' });
+    }
+    if (fila.contratoVigente && !estados.has(fila.contratoVigente)) {
+      errores.push({ fila: numero, campo: 'Contrato Vigente', mensaje: 'Use CONTRATO VIGENTE o CONTRATO VENCIDO.' });
+    }
   });
 
   return errores;

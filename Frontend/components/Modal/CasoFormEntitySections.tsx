@@ -1,4 +1,5 @@
 // raiz components/Modal/CasoFormEntitySections.tsx
+
 'use client';
 
 import { TabId } from '@/hooks/useCrearCasoForm';
@@ -245,7 +246,20 @@ export function LocatarioSection({
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <Campo label="Nombre / Razón Social *" value={nuevoLocatario.nombreBanco} onChange={(e) => cambiarNuevo('nombreBanco', e.target.value)} />
           <Campo label="NIT / Cédula *" value={nuevoLocatario.nit} onChange={(e) => cambiarNuevo('nit', e.target.value)} disabled={modoLocatario === 'editar'} />
-          <Campo label="Tipo de Documento" value={nuevoLocatario.tipoDocumento} onChange={(e) => cambiarNuevo('tipoDocumento', e.target.value)} />
+          
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-600">Tipo de Documento</label>
+            <select
+              value={nuevoLocatario.tipoDocumento}
+              onChange={(e) => cambiarNuevo('tipoDocumento', e.target.value)}
+              className={inputClass}
+            >
+              <option value="">Seleccione tipo...</option>
+              <option value="NIT">NIT</option>
+              <option value="CC">CC (Cédula de Ciudadanía)</option>
+            </select>
+          </div>
+
           <Campo label="Correo Principal" type="email" value={nuevoLocatario.email} onChange={(e) => cambiarNuevo('email', e.target.value)} />
           <Campo label="Contacto" value={nuevoLocatario.contactoNombre} onChange={(e) => cambiarNuevo('contactoNombre', e.target.value)} />
           <Campo label="Número de Contacto" value={nuevoLocatario.contactoNumero} onChange={(e) => cambiarNuevo('contactoNumero', e.target.value)} />
@@ -389,7 +403,6 @@ export function VehiculoSection({
               type={type}
               value={nuevoVehiculo[key]}
               onChange={(e) => cambiarNuevo(key, e.target.value)}
-              disabled={modoVehiculo === 'editar' && key === 'placa'}
             />
           ))}
         </div>
@@ -397,7 +410,6 @@ export function VehiculoSection({
     </section>
   );
 }
-
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'basico', label: 'Básico' },

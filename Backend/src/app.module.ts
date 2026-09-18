@@ -13,10 +13,14 @@ import { BusquedaModule } from './busqueda/busqueda.module';
 import { GestionModule } from './CrearGestion/gestion.module';
 import { EstadosModule } from './estados/estados.module';
 import { GestionMasivaModule } from './MasivosDatoG/gestion-masiva.module';
-import { InyeccionMasivaModule } from './InyeccionMasiva/inyeccion-masiva.module';
+import { InyeccionMasivaModule } from './InyeccionMasiva/InyeccionMasiva/inyeccion-masiva.module';
 import { PortalConsultaModule } from './portal-consulta/portal-consulta.module';
 import { SeguimientoPortalModule } from './seguimiento-portal/seguimiento-portal.module';
 import { ArchivosModule } from './archivos/archivos.module';
+import { AutoInyeccionCasosModule } from './InyeccionMasiva/auto-InyeccionCasos/auto-inyeccion-casos.module';
+import { CalculosModule } from './calculos/calculos.module';
+import { Calculos2Module } from './calculos2/calculos2.module';
+
 
 @Module({
   imports: [
@@ -36,6 +40,13 @@ import { ArchivosModule } from './archivos/archivos.module';
     PortalConsultaModule,
     SeguimientoPortalModule,
     ArchivosModule,
+
+    InyeccionMasivaModule,
+    AutoInyeccionCasosModule,
+
+    CalculosModule,
+    Calculos2Module
+
   ],
   controllers: [AppController],
   providers: [AppService],

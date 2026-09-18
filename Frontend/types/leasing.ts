@@ -109,6 +109,8 @@ export interface Caso {
   estadoContratoId?: number | null;
   estadoContrato?: Estado | null;
 
+  camposCalculados?: CamposCalculados | null;
+
   fecha?: string | null;
   fechaAsignacion?: string | null;
   fechaCierreTraspaso?: string | null;
@@ -311,4 +313,28 @@ export interface GestionCaso {
   fechaGestion: string;
   fechaProximaGestion?: string | null;
   analistaResponsable: string;
+}
+
+export interface CamposCalculados {
+  id: number;
+  casoId: number;
+  responsableGestion?: string | null;
+  diasDesdeUltimoComentario?: number | null;
+  alertaCorreoNotificacionInicial?: boolean;
+  alertaNotificacionLocatario?: boolean;
+  diasDesdeUltimaNotificacion?: number | null;
+  alertaActualizacionBase?: boolean;
+  alertaRespuestaDp?: boolean;
+  diasDp?: number | null;
+  alertaRespuestaTutela?: boolean;
+  diasRespuestaTutela?: number | null;
+  alertaReactivacionCaso?: boolean;
+  diasSuspensionCaso?: number | null;
+  tiempoTotalProceso?: number | null;
+  bloqueJuridicoTotal?: number | null;
+  alertaAnsCompleta?: boolean;
+  estadoVencimientoAns?: string | null;
+  ansGpa?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }

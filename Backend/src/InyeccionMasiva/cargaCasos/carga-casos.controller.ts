@@ -1,6 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { CargaCasosService } from './carga-casos.service';
-import { ImportarCasosDto } from './importar-casos.dto';
+import { CargaCasosService } from '../cargaCasos/carga-casos.service';
+import { ImportarCasosDto } from '../dto/importar-casos.dto';
 
 @Controller('inyeccion-masiva')
 export class CargaCasosController {

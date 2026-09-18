@@ -7,14 +7,7 @@ import { leasingApi } from "@/services/leasingApi";
 import { Caso, CrearCasoInput, Locatario, Vehiculo } from "@/types/leasing";
 import { ModoEntidad, NuevoLocatario, NuevoVehiculo } from "@/components/Modal/CasoFormEntitySections";
 
-export type TabId =
-  | "basico"
-  | "fechas"
-  | "notificaciones"
-  | "traspaso"
-  | "facturacion"
-  | "juridico"
-  | "multas";
+export type TabId = "basico" | "fechas" | "notificaciones" | "traspaso" | "facturacion" | "juridico" | "multas";
 
 type Options = {
   presentation: "page" | "modal";
@@ -31,9 +24,11 @@ const fechaInput = (value?: string | Date | null) => {
 const fechaApi = (value?: string | Date | null) => {
   if (!value) return undefined;
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : value.toISOString();
+
   const text = value.trim();
   if (!text) return undefined;
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return `${text}T00:00:00.000Z`;
+
   const date = new Date(text);
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 };
@@ -44,94 +39,79 @@ const hoy = () => {
 };
 
 const numero = (value: string | number | null | undefined): number | undefined => {
-  if (value === null || value === undefined || value === '') {
-    return undefined;
-  }
-
+  if (value === null || value === undefined || value === "") return undefined;
   const resultado = Number(value);
   return Number.isFinite(resultado) ? resultado : undefined;
 };
 
 const formularioVacio = (): CrearCasoInput => ({
-  numeroContrato: "",
-  radicadoBizagi: "",
-  locatarioId: 0,
-  vehiculoPlaca: "",
-  analistaResponsable: "",
-  aplicaInscripcionOpcionCompra: false,
-  valorOpcionCompra: null,
-  observacionesGeneral: "",
-  fecha: hoy(),
-  fechaAsignacion: "",
-  fechaCierreTraspaso: "",
-  fechaCierreTraspasoBizagi: "",
-  fechaSolicitudSuspension: "",
-  fechaHastaSuspension: "",
-  seEnvioNotificacion: false,
-  fechaDebesEnviarNotificacion: "",
-  fechaNotificacionInicial: "",
-  fechaUltimaNotificacion: "",
-  fechaProximaNotificacion: "",
-  fechaUltimaGestion: "",
-  fechaProximaGestion: "",
-  traspasoConCita: false,
-  fechaInicioCitaTransito: "",
-  fechaConsecucionCitaTransito: "",
-  fechaCitaTransito: "",
-  fechaRadicacionTraspaso: "",
-  fechaRechazo: "",
-  fechaSubsanacionRechazo: "",
-  fechaTraspasoAprobado: "",
-  ubicacionTarjeta: "",
-  nombreCorresponsalTramitador: "",
-  fechaEntregaDatosEnvio: "",
-  fechaProgramacionEntregaTp: "",
-  fechaEntregaTpLocatario: "",
-  honorarios: undefined,
-  facturado: false,
-  numeroFactura: "",
-  fechaFactura: "",
-  formulaTraspasosGpa: "",
-  honorariosServiciosJuridicos: undefined,
-  facturadoJuridico: false,
-  numeroFacturaJuridico: "",
-  fechaFacturaJuridico: "",
-  tiempoEntidadesExternas: undefined,
-  tiempoBanco: undefined,
-  tiempoJuridicoExterno: undefined,
-  tiempoJuridicoInterno: undefined,
-  tiempoTransito: undefined,
-  tiempoOperativoAnalista: undefined,
-  procesoJuridico: {},
-  auditoriaMulta: {},
+  numeroContrato: "", radicadoBizagi: "", locatarioId: 0, vehiculoPlaca: "", analistaResponsable: "",
+  aplicaInscripcionOpcionCompra: false, valorOpcionCompra: null, observacionesGeneral: "", fecha: hoy(),
+  fechaAsignacion: "", fechaCierreTraspaso: "", fechaCierreTraspasoBizagi: "", fechaSolicitudSuspension: "",
+  fechaHastaSuspension: "", seEnvioNotificacion: false, fechaDebesEnviarNotificacion: "", fechaNotificacionInicial: "",
+  fechaUltimaNotificacion: "", fechaProximaNotificacion: "", fechaUltimaGestion: "", fechaProximaGestion: "",
+  traspasoConCita: false, fechaInicioCitaTransito: "", fechaConsecucionCitaTransito: "", fechaCitaTransito: "",
+  fechaRadicacionTraspaso: "", fechaRechazo: "", fechaSubsanacionRechazo: "", fechaTraspasoAprobado: "",
+  ubicacionTarjeta: "", nombreCorresponsalTramitador: "", fechaEntregaDatosEnvio: "", fechaProgramacionEntregaTp: "",
+  fechaEntregaTpLocatario: "", honorarios: undefined, facturado: false, numeroFactura: "", fechaFactura: "",
+  formulaTraspasosGpa: "", honorariosServiciosJuridicos: undefined, facturadoJuridico: false,
+  numeroFacturaJuridico: "", fechaFacturaJuridico: "", procesoJuridico: {}, auditoriaMulta: {},
 });
 
 const locatarioVacio = (): NuevoLocatario => ({
-  nombreBanco: "", nit: "", tipoDocumento: "", email: "", revisionCorreo: false,
-  contactoNombre: "", contactoNumero: "", direccionEnvio: "", locatarioRunt: "",
-  nombreComercial: "", emailComercial: "", revisionMailComercial: false,
+  nombreBanco: "", nit: "", tipoDocumento: "", email: "", revisionCorreo: false, contactoNombre: "",
+  contactoNumero: "", direccionEnvio: "", locatarioRunt: "", nombreComercial: "", emailComercial: "",
+  revisionMailComercial: false,
 });
 
 const vehiculoVacio = (): NuevoVehiculo => ({
-  placa: "", vin: "", marca: "", linea: "", modelo: "", cilindraje: "", motor: "",
-  chasis: "", serie: "", color: "", tipoVehiculo: "", tipoServicio: "", tipoCarroceria: "",
-  tipoCombustible: "", blindaje: "", transito: "", departamento: "", regional: "",
-  empresaTransportadora: "", vigenciaSoat: "", vigenciaTecno: "",
+  placa: "", vin: "", marca: "", linea: "", modelo: "", cilindraje: "", motor: "", chasis: "", serie: "",
+  color: "", tipoVehiculo: "", tipoServicio: "", tipoCarroceria: "", tipoCombustible: "", blindaje: "",
+  transito: "", departamento: "", regional: "", empresaTransportadora: "", vigenciaSoat: "", vigenciaTecno: "",
 });
+
+// Convierte un objeto plano en el formulario: fechas -> fechaInput, resto de escalares se conserva, objetos se descartan
+const normalizarParaFormulario = (obj?: Record<string, any> | null): Record<string, any> => {
+  const out: Record<string, any> = {};
+  if (!obj) return out;
+  Object.entries(obj).forEach(([k, v]) => {
+    if (k.toLowerCase().includes("fecha")) out[k] = fechaInput(v as string);
+    else if (typeof v !== "object" || v === null) out[k] = v ?? "";
+  });
+  return out;
+};
+
+// Limpia un objeto de proceso/auditoría antes de enviarlo a la API: descarta id/casoId/vacíos/objetos, formatea fechas
+const sanitizarParaApi = (obj: Record<string, any>): Record<string, any> =>
+  Object.entries(obj).reduce((acc, [key, val]) => {
+    if (key === "id" || key === "casoId" || val === "" || val === null || val === undefined || typeof val === "object") return acc;
+    if (key.toLowerCase().includes("fecha")) {
+      const fIso = fechaApi(val as string);
+      if (fIso) acc[key] = fIso;
+    } else {
+      acc[key] = val;
+    }
+    return acc;
+  }, {} as Record<string, any>);
 
 export function useCrearCasoForm({ presentation, onSuccess, casoAEditar }: Options) {
   const router = useRouter();
+
   const [activeTab, setActiveTab] = useState<TabId>("basico");
   const [locatarios, setLocatarios] = useState<Locatario[]>([]);
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const [modoLocatario, setModoLocatario] = useState<ModoEntidad>("nuevo");
   const [modoVehiculo, setModoVehiculo] = useState<ModoEntidad>("nuevo");
+
   const [nuevoLocatario, setNuevoLocatario] = useState<NuevoLocatario>(locatarioVacio);
   const [nuevoVehiculo, setNuevoVehiculo] = useState<NuevoVehiculo>(vehiculoVacio);
+
   const [formData, setFormData] = useState<CrearCasoInput>(formularioVacio);
+
   const [procesoJuridicoId, setProcesoJuridicoId] = useState<number | null>(null);
   const [auditoriaMultaId, setAuditoriaMultaId] = useState<number | null>(null);
 
@@ -158,6 +138,8 @@ export function useCrearCasoForm({ presentation, onSuccess, casoAEditar }: Optio
       setNuevoVehiculo(vehiculoVacio());
       setModoLocatario("nuevo");
       setModoVehiculo("nuevo");
+      setProcesoJuridicoId(null);
+      setAuditoriaMultaId(null);
       setLoading(false);
       return;
     }
@@ -174,70 +156,30 @@ export function useCrearCasoForm({ presentation, onSuccess, casoAEditar }: Optio
 
     if (loc) {
       setNuevoLocatario({
-        nombreBanco: loc.nombreBanco || "",
-        nit: loc.nit || "",
-        tipoDocumento: loc.tipoDocumento || "",
-        email: loc.email || "",
-        revisionCorreo: loc.revisionCorreo || false,
-        contactoNombre: loc.contactoNombre || "",
-        contactoNumero: loc.contactoNumero || "",
-        direccionEnvio: loc.direccionEnvio || "",
-        locatarioRunt: loc.locatarioRunt || "",
-        nombreComercial: loc.nombreComercial || "",
-        emailComercial: loc.emailComercial || "",
-        revisionMailComercial: loc.revisionMailComercial || false,
+        nombreBanco: loc.nombreBanco || "", nit: loc.nit || "", tipoDocumento: loc.tipoDocumento || "",
+        email: loc.email || "", revisionCorreo: loc.revisionCorreo || false, contactoNombre: loc.contactoNombre || "",
+        contactoNumero: loc.contactoNumero || "", direccionEnvio: loc.direccionEnvio || "",
+        locatarioRunt: loc.locatarioRunt || "", nombreComercial: loc.nombreComercial || "",
+        emailComercial: loc.emailComercial || "", revisionMailComercial: loc.revisionMailComercial || false,
       });
     }
 
     if (veh) {
       setNuevoVehiculo({
-        placa: veh.placa || "",
-        vin: veh.vin || "",
-        marca: veh.marca || "",
-        linea: veh.linea || "",
-        modelo: veh.modelo ? String(veh.modelo) : "",
-        cilindraje: veh.cilindraje || "",
-        motor: veh.motor || "",
-        chasis: veh.chasis || "",
-        serie: veh.serie || "",
-        color: veh.color || "",
-        tipoVehiculo: veh.tipoVehiculo || "",
-        tipoServicio: veh.tipoServicio || "",
-        tipoCarroceria: veh.tipoCarroceria || "",
-        tipoCombustible: veh.tipoCombustible || "",
-        blindaje: veh.blindaje || "",
-        transito: veh.transito || "",
-        departamento: veh.departamento || "",
-        regional: veh.regional || "",
-        empresaTransportadora: veh.empresaTransportadora || "",
-        vigenciaSoat: fechaInput(veh.vigenciaSoat),
+        placa: veh.placa || "", vin: veh.vin || "", marca: veh.marca || "", linea: veh.linea || "",
+        modelo: veh.modelo ? String(veh.modelo) : "", cilindraje: veh.cilindraje || "", motor: veh.motor || "",
+        chasis: veh.chasis || "", serie: veh.serie || "", color: veh.color || "", tipoVehiculo: veh.tipoVehiculo || "",
+        tipoServicio: veh.tipoServicio || "", tipoCarroceria: veh.tipoCarroceria || "",
+        tipoCombustible: veh.tipoCombustible || "", blindaje: veh.blindaje || "", transito: veh.transito || "",
+        departamento: veh.departamento || "", regional: veh.regional || "",
+        empresaTransportadora: veh.empresaTransportadora || "", vigenciaSoat: fechaInput(veh.vigenciaSoat),
         vigenciaTecno: fechaInput(veh.vigenciaTecno),
       });
     }
 
-    // Normalizar proceso jurídico para el formulario
-    const procesoForm: Record<string, any> = {};
-    if (proceso) {
-      Object.entries(proceso).forEach(([k, v]) => {
-        if (k.toLowerCase().includes("fecha")) {
-          procesoForm[k] = fechaInput(v as string);
-        } else if (typeof v !== "object" || v === null) {
-          procesoForm[k] = v ?? "";
-        }
-      });
-    }
-
-    // Normalizar auditoría de multas para el formulario
-    const auditoriaForm: Record<string, any> = {};
-    if (auditoria) {
-      Object.entries(auditoria).forEach(([k, v]) => {
-        if (k.toLowerCase().includes("fecha")) {
-          auditoriaForm[k] = fechaInput(v as string);
-        } else if (typeof v !== "object" || v === null) {
-          auditoriaForm[k] = v ?? "";
-        }
-      });
-    }
+    // Normalizar proceso jurídico y auditoría de multas para el formulario
+    const procesoForm = normalizarParaFormulario(proceso);
+    const auditoriaForm = normalizarParaFormulario(auditoria);
 
     // Mapeo completo de TODOS los campos del caso
     setFormData({
@@ -249,10 +191,7 @@ export function useCrearCasoForm({ presentation, onSuccess, casoAEditar }: Optio
       analistaResponsable: casoAEditar.analistaResponsable || "",
       observacionesGeneral: casoAEditar.observacionesGeneral || "",
       aplicaInscripcionOpcionCompra: Boolean(casoAEditar.aplicaInscripcionOpcionCompra),
-      valorOpcionCompra:
-        casoAEditar.valorOpcionCompra == null || casoAEditar.valorOpcionCompra === ""
-          ? null
-          : Number(casoAEditar.valorOpcionCompra),
+      valorOpcionCompra: casoAEditar.valorOpcionCompra == null || casoAEditar.valorOpcionCompra === "" ? null : Number(casoAEditar.valorOpcionCompra),
       estadoContratoId: casoAEditar.estadoContratoId ?? undefined,
       estadoId: casoAEditar.estadoId ?? undefined,
       categoriaId: casoAEditar.categoriaId ?? undefined,
@@ -273,12 +212,7 @@ export function useCrearCasoForm({ presentation, onSuccess, casoAEditar }: Optio
       honorariosServiciosJuridicos: numero(casoAEditar.honorariosServiciosJuridicos),
       facturadoJuridico: Boolean(casoAEditar.facturadoJuridico),
       numeroFacturaJuridico: casoAEditar.numeroFacturaJuridico || "",
-      tiempoEntidadesExternas: numero(casoAEditar.tiempoEntidadesExternas),
-      tiempoBanco: numero(casoAEditar.tiempoBanco),
-      tiempoJuridicoExterno: numero(casoAEditar.tiempoJuridicoExterno),
-      tiempoJuridicoInterno: numero(casoAEditar.tiempoJuridicoInterno),
-      tiempoTransito: numero(casoAEditar.tiempoTransito),
-      tiempoOperativoAnalista: numero(casoAEditar.tiempoOperativoAnalista),
+
       fecha: fechaInput(casoAEditar.fecha),
       fechaAsignacion: fechaInput(casoAEditar.fechaAsignacion),
       fechaCierreTraspaso: fechaInput(casoAEditar.fechaCierreTraspaso),
@@ -306,24 +240,30 @@ export function useCrearCasoForm({ presentation, onSuccess, casoAEditar }: Optio
       procesoJuridico: procesoForm,
       auditoriaMulta: auditoriaForm,
     });
+
     setLoading(false);
   }, [casoAEditar]);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = event.target;
+
     if (name === "fecha") return;
+
     if (name.startsWith("juridico.")) {
       const field = name.slice("juridico.".length) as keyof NonNullable<CrearCasoInput["procesoJuridico"]>;
       setFormData((previous) => ({ ...previous, procesoJuridico: { ...previous.procesoJuridico, [field]: value } }));
       return;
     }
+
     if (name.startsWith("multa.")) {
       const field = name.slice("multa.".length) as keyof NonNullable<CrearCasoInput["auditoriaMulta"]>;
       setFormData((previous) => ({ ...previous, auditoriaMulta: { ...previous.auditoriaMulta, [field]: value } }));
       return;
     }
+
     const checked = (event.target as HTMLInputElement).checked;
     const finalValue = type === "checkbox" ? checked : type === "number" ? (value === "" ? undefined : Number(value)) : value;
+
     setFormData((previous) => ({ ...previous, [name]: finalValue }));
   };
 
@@ -331,8 +271,10 @@ export function useCrearCasoForm({ presentation, onSuccess, casoAEditar }: Optio
     event.preventDefault();
     setSubmitting(true);
     setError(null);
+
     try {
       if (!formData.numeroContrato.trim()) throw new Error("El número de contrato es obligatorio.");
+
       let locatarioId = formData.locatarioId;
       let vehiculoPlaca = formData.vehiculoPlaca.trim().toUpperCase();
 
@@ -341,24 +283,18 @@ export function useCrearCasoForm({ presentation, onSuccess, casoAEditar }: Optio
         if (!nuevoLocatario.nombreBanco.trim() || !nuevoLocatario.nit.trim()) {
           throw new Error("Debes ingresar Nombre y NIT/Cédula del locatario.");
         }
+
         const nitLimpio = nuevoLocatario.nit.trim();
+
         try {
           locatarioId = (await leasingApi.getLocatarioByIdentificacion(nitLimpio)).id;
         } catch {
-          const created = await leasingApi.createLocatario({
-            ...nuevoLocatario,
-            nit: nitLimpio,
-            nombreBanco: nuevoLocatario.nombreBanco.trim(),
-          });
+          const created = await leasingApi.createLocatario({ ...nuevoLocatario, nit: nitLimpio, nombreBanco: nuevoLocatario.nombreBanco.trim() });
           locatarioId = created.id;
         }
       } else if (modoLocatario === "editar" && locatarioId) {
         // ACTUALIZACIÓN DE LOCATARIO EXISTENTE
-        await leasingApi.updateLocatario(locatarioId, {
-          ...nuevoLocatario,
-          nit: nuevoLocatario.nit.trim(),
-          nombreBanco: nuevoLocatario.nombreBanco.trim(),
-        });
+        await leasingApi.updateLocatario(locatarioId, { ...nuevoLocatario, nit: nuevoLocatario.nit.trim(), nombreBanco: nuevoLocatario.nombreBanco.trim() });
       }
 
       if (!locatarioId) throw new Error("Debes seleccionar o ingresar un locatario válido.");
@@ -366,6 +302,7 @@ export function useCrearCasoForm({ presentation, onSuccess, casoAEditar }: Optio
       // 2. GESTIÓN DEL VEHÍCULO (Crear o Actualizar)
       if (modoVehiculo === "nuevo") {
         if (!nuevoVehiculo.placa.trim()) throw new Error("La placa del vehículo es obligatoria.");
+
         vehiculoPlaca = nuevoVehiculo.placa.trim().toUpperCase();
 
         const payloadNuevoVehiculo = {
@@ -425,12 +362,6 @@ export function useCrearCasoForm({ presentation, onSuccess, casoAEditar }: Optio
         fechaFacturaJuridico: fechaApi(formData.fechaFacturaJuridico),
         honorarios: numero(formData.honorarios),
         honorariosServiciosJuridicos: numero(formData.honorariosServiciosJuridicos),
-        tiempoEntidadesExternas: numero(formData.tiempoEntidadesExternas),
-        tiempoBanco: numero(formData.tiempoBanco),
-        tiempoJuridicoExterno: numero(formData.tiempoJuridicoExterno),
-        tiempoJuridicoInterno: numero(formData.tiempoJuridicoInterno),
-        tiempoTransito: numero(formData.tiempoTransito),
-        tiempoOperativoAnalista: numero(formData.tiempoOperativoAnalista),
         procesoJuridico: undefined,
         auditoriaMulta: undefined,
       };
@@ -441,30 +372,7 @@ export function useCrearCasoForm({ presentation, onSuccess, casoAEditar }: Optio
 
         // 2. Sanitizar y actualizar Proceso Jurídico
         if (procesoJuridicoId && formData.procesoJuridico) {
-          const procesoLimpio = Object.entries(formData.procesoJuridico).reduce(
-            (acc, [key, val]) => {
-              if (
-                key === 'id' ||
-                key === 'casoId' ||
-                val === '' ||
-                val === null ||
-                val === undefined ||
-                typeof val === 'object'
-              ) {
-                return acc;
-              }
-
-              if (key.toLowerCase().includes('fecha')) {
-                const fIso = fechaApi(val as string);
-                if (fIso) acc[key] = fIso;
-              } else {
-                acc[key] = val;
-              }
-              return acc;
-            },
-            {} as Record<string, any>
-          );
-
+          const procesoLimpio = sanitizarParaApi(formData.procesoJuridico);
           if (Object.keys(procesoLimpio).length > 0) {
             await leasingApi.updateProcesoJuridico(procesoJuridicoId, procesoLimpio);
           }
@@ -472,43 +380,17 @@ export function useCrearCasoForm({ presentation, onSuccess, casoAEditar }: Optio
 
         // 3. Sanitizar y actualizar Auditoría de Multas
         if (auditoriaMultaId && formData.auditoriaMulta) {
-          const multaLimpia = Object.entries(formData.auditoriaMulta).reduce(
-            (acc, [key, val]) => {
-              if (
-                key === 'id' ||
-                key === 'casoId' ||
-                val === '' ||
-                val === null ||
-                val === undefined ||
-                typeof val === 'object'
-              ) {
-                return acc;
-              }
-
-              if (key.toLowerCase().includes('fecha')) {
-                const fIso = fechaApi(val as string);
-                if (fIso) acc[key] = fIso;
-              } else {
-                acc[key] = val;
-              }
-              return acc;
-            },
-            {} as Record<string, any>
-          );
-
+          const multaLimpia = sanitizarParaApi(formData.auditoriaMulta);
           if (Object.keys(multaLimpia).length > 0) {
             await leasingApi.updateAuditoriaMulta(auditoriaMultaId, multaLimpia);
           }
         }
       } else {
-        await leasingApi.createCaso({
-          ...payload,
-          procesoJuridico: formData.procesoJuridico,
-          auditoriaMulta: formData.auditoriaMulta,
-        } as CrearCasoInput);
+        await leasingApi.createCaso({ ...payload, procesoJuridico: formData.procesoJuridico, auditoriaMulta: formData.auditoriaMulta } as CrearCasoInput);
       }
 
       onSuccess?.();
+
       if (presentation === "page") {
         router.push("/");
         router.refresh();
@@ -521,23 +403,9 @@ export function useCrearCasoForm({ presentation, onSuccess, casoAEditar }: Optio
   };
 
   return {
-    activeTab,
-    setActiveTab,
-    locatarios,
-    vehiculos,
-    loading,
-    submitting,
-    error,
-    modoLocatario,
-    setModoLocatario,
-    modoVehiculo,
-    setModoVehiculo,
-    nuevoLocatario,
-    setNuevoLocatario,
-    nuevoVehiculo,
-    setNuevoVehiculo,
-    formData,
-    handleChange,
-    handleSubmit,
+    activeTab, setActiveTab, locatarios, vehiculos, loading, submitting, error,
+    modoLocatario, setModoLocatario, modoVehiculo, setModoVehiculo,
+    nuevoLocatario, setNuevoLocatario, nuevoVehiculo, setNuevoVehiculo,
+    formData, handleChange, handleSubmit,
   };
 }

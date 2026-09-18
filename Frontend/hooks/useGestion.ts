@@ -1,4 +1,4 @@
-// raiz hooks/useGestion.ts
+// hooks/useGestion.ts
 
 import {
   useMutation,
@@ -6,18 +6,15 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 
+import { apiClient } from '@/api/client'; 
 import { Caso } from '../types/leasing';
-
-const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL || 'http://10.0.4.4:5001'
-).replace(/\/$/, '');
 
 // ==========================================
 // TIPOS
 // ==========================================
 
 export interface CrearGestionInput {
-  casoId: string;
+  casoId: number | string;
   tipoObservacion: string;
   comentario: string;
   fechaProximaGestion?: string | null;
@@ -25,8 +22,8 @@ export interface CrearGestionInput {
 }
 
 export interface GestionCaso {
-  id: string;
-  casoId: string;
+  id: number;
+  casoId: number;
   tipoObservacion: string;
   comentario: string;
   fechaGestion: string;
@@ -59,52 +56,60 @@ export const useCrearGestion = () => {
     mutationFn: async (
       datos: CrearGestionInput
     ): Promise<GestionCaso> => {
-      const response = await fetch(
-        `${API_BASE_URL}/gestion`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(datos),
-        }
-      );
+      try {
+        const payload = {
+          ...datos,
+          casoId: Number(datos.casoId),
+        };
 
-      if (!response.ok) {
-        const error = await response.text();
+        console.log('===[ HOOK CREAR GESTIÓN ]=== Enviando datos:', payload);
 
-        throw new Error(
-          error || 'Error al crear la gestión'
+        const response = await apiClient.post<GestionCaso>(
+          '/gestion',
+          payload
         );
+        return response.data;
+      } catch (error: any) {
+        const mensaje =
+          error?.response?.data?.message || 'Error al crear la gestión';
+        throw new Error(Array.isArray(mensaje) ? mensaje.join(', ') : mensaje);
       }
-
-      return response.json();
     },
 
-onSuccess: (_, variables) => {
-  // Actualiza el historial de gestiones
-  queryClient.invalidateQueries({
-    queryKey: [
-      'historial-gestiones',
-      variables.casoId,
-    ],
-  });
+    onSuccess: (_, variables) => {
+      const idNumerico = Number(variables.casoId);
 
-  // Actualiza la lista general de casos
-  queryClient.invalidateQueries({
-    queryKey: ['casos'],
-  });
+      // 1. Actualiza el historial de gestiones
+      queryClient.invalidateQueries({
+        queryKey: ['historial-gestiones', idNumerico],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['historial-gestiones', String(variables.casoId)],
+      });
 
-  // Actualiza el caso individual con fechaUltimaGestion
-  queryClient.invalidateQueries({
-    queryKey: [
-      'caso',
-      'id',
-      variables.casoId,
-    ],
-  });
-},
+      // 2. Actualiza la lista general de casos y tarjetas de métricas
+      queryClient.invalidateQueries({
+        queryKey: ['casos'],
+      });
 
+      // 3. Actualiza el caso individual
+      queryClient.invalidateQueries({
+        queryKey: ['caso', idNumerico],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['caso', 'id', idNumerico],
+      });
+
+      // 4. Invalida búsquedas de gestión activas
+      queryClient.invalidateQueries({
+        queryKey: ['buscar-casos-gestion'],
+      });
+
+      // 5. Invalida los cálculos del caso
+      queryClient.invalidateQueries({
+        queryKey: ['calculos', idNumerico],
+      });
+    },
   });
 };
 
@@ -113,31 +118,31 @@ onSuccess: (_, variables) => {
 // ==========================================
 
 export const useHistorialGestiones = (
-  casoId: string
+  casoId: number | string | null
 ) => {
+  const idNumerico = casoId ? Number(casoId) : null;
+
   return useQuery<GestionCaso[]>({
     queryKey: [
       'historial-gestiones',
-      casoId,
+      idNumerico,
     ],
 
     queryFn: async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/gestion/${encodeURIComponent(
-          casoId
-        )}/gestiones`
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          'Error al obtener el historial de gestiones'
+      try {
+        const response = await apiClient.get<GestionCaso[]>(
+          `/gestion/${encodeURIComponent(Number(idNumerico))}/gestiones`
         );
+        return response.data;
+      } catch (error: any) {
+        const mensaje =
+          error?.response?.data?.message ||
+          'Error al obtener el historial de gestiones';
+        throw new Error(Array.isArray(mensaje) ? mensaje.join(', ') : mensaje);
       }
-
-      return response.json();
     },
 
-    enabled: !!casoId,
+    enabled: !!idNumerico && !isNaN(idNumerico),
   });
 };
 
@@ -157,22 +162,17 @@ export const useBuscarCasosGestion = (
     ],
 
     queryFn: async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/gestion/buscar?tipo=${encodeURIComponent(
-          tipo
-        )}&q=${encodeURIComponent(q)}`
-      );
-
-      if (!response.ok) {
-        const error = await response.text();
-
-        throw new Error(
-          error ||
-            'Error al buscar casos para gestión'
+      try {
+        const response = await apiClient.get<ResultadoBusquedaGestion>(
+          `/gestion/buscar?tipo=${encodeURIComponent(tipo)}&q=${encodeURIComponent(q)}`
         );
+        return response.data;
+      } catch (error: any) {
+        const mensaje =
+          error?.response?.data?.message ||
+          'Error al buscar casos para gestión';
+        throw new Error(Array.isArray(mensaje) ? mensaje.join(', ') : mensaje);
       }
-
-      return response.json();
     },
 
     enabled: !!tipo && !!q.trim(),

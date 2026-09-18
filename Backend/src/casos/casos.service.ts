@@ -1,4 +1,4 @@
-//raiz src/casos/casos.services
+// src/casos/casos.service.ts
 
 import {
   Injectable,
@@ -10,6 +10,7 @@ import { CreateCasoDto } from './dto/create-caso.dto';
 import { UpdateCasoDto } from './dto/update-caso.dto';
 import { Prisma } from '@prisma/client';
 import { EstadosCasoService } from './estados-caso/estados-caso.service';
+import { calcularAlertaActualizacionBase } from './utils/alerta-actualizacion-base';
 
 @Injectable()
 export class CasosService {
@@ -18,6 +19,9 @@ export class CasosService {
     private readonly estadosCasoService: EstadosCasoService,
   ) {}
 
+  // =========================================================================
+  // RELACIONES INCLUIDAS EN LAS CONSULTAS (INCLUYE CAMPOS CALCULADOS)
+  // =========================================================================
   private readonly includeCasoCompleto = {
     locatario: true,
     vehiculo: {
@@ -32,6 +36,7 @@ export class CasosService {
       },
     },
     auditoriaMulta: true,
+    camposCalculados: true, // Se incluye para retornar las alertas al frontend
     estado: true,
     categoria: true,
     etapa: true,
@@ -39,7 +44,48 @@ export class CasosService {
     causaAtraso: true,
     estadoContrato: true,
   };
+  
+// =========================================================================
+// NORMALIZADOR DE CAMPOS CALCULADOS Y CÁLCULO EN VIVO
+// =========================================================================
+private normalizarCasoConCalculos(caso: any) {
+  if (!caso) return caso;
 
+  const alertaOriginal = caso.camposCalculados?.alertaActualizacionBase;
+  let alertaFinal = typeof alertaOriginal === 'string' ? alertaOriginal.trim() : '';
+
+  // Descartar valores booleanos guardados como texto residual ("false" o "true")
+  if (alertaFinal === 'false' || alertaFinal === 'true') {
+    alertaFinal = '';
+  }
+
+  // Si no hay un texto de alerta válido, ejecuta el cálculo en vivo
+  if (!alertaFinal) {
+    alertaFinal = calcularAlertaActualizacionBase({
+      estado: caso.estado?.nombre,
+      analistaResponsable: caso.analistaResponsable,
+      actividad: caso.subetapa?.nombre,
+      fechaProximaGestion: caso.fechaProximaGestion,
+    });
+  }
+
+  // 🔍 LOG EN TERMINAL DEL BACKEND
+  //console.log(
+  //  `\x1b[33m[BACKEND CASOS SERVICE]\x1b[0m Caso ID: \x1b[36m${caso.id}\x1b[0m | Contrato: \x1b[36m${caso.numeroContrato}\x1b[0m | BD Original: \x1b[31m${JSON.stringify(alertaOriginal)}\x1b[0m => Enviado: \x1b[32m"${alertaFinal}"\x1b[0m`
+  //);
+
+  return {
+    ...caso,
+    camposCalculados: {
+      ...caso.camposCalculados,
+      alertaActualizacionBase: alertaFinal,
+    },
+  };
+}
+
+  // =========================================================================
+  // MÉTODOS DE CONVERSIÓN Y FORMATEO DE FECHAS
+  // =========================================================================
   private convertirFechas<T extends object>(
     datos: T,
     camposFecha: string[],
@@ -126,6 +172,9 @@ export class CasosService {
     'fechaFinGestionDocumentalTraspaso',
   ];
 
+  // =========================================================================
+  // CREACIÓN DE CASOS
+  // =========================================================================
   async create(createCasoDto: CreateCasoDto) {
     const existe = await this.prisma.caso.findFirst({
       where: {
@@ -182,18 +231,43 @@ export class CasosService {
         caso.id,
         caso.estadoId ?? null,
         caso.categoriaId ?? null,
-        caso.etapaId ?? null ,
+        caso.etapaId ?? null,
         caso.subetapaId ?? null,
       );
 
-      return caso;
+      // Creación del registro inicial de campos calculados / alertas
+      const alertaInicial = calcularAlertaActualizacionBase({
+        estado: caso.estado?.nombre,
+        analistaResponsable: caso.analistaResponsable,
+        actividad: caso.subetapa?.nombre,
+        fechaProximaGestion: caso.fechaProximaGestion,
+      });
+
+      await tx.camposCalculados.create({
+        data: {
+          casoId: caso.id,
+          alertaActualizacionBase: alertaInicial,
+        },
+      });
+
+      const casoCreado = await tx.caso.findUnique({
+        where: { id: caso.id },
+        include: this.includeCasoCompleto,
+      });
+
+      return this.normalizarCasoConCalculos(casoCreado);
     });
   }
 
-  findAll() {
-    return this.prisma.caso.findMany({
+  // =========================================================================
+  // CONSULTAS (FIND ALL / FIND ONE / FIND BY CONTRACT)
+  // =========================================================================
+  async findAll() {
+    const casos = await this.prisma.caso.findMany({
       include: this.includeCasoCompleto,
     });
+
+    return casos.map((c) => this.normalizarCasoConCalculos(c));
   }
 
   async findOne(id: number) {
@@ -208,7 +282,7 @@ export class CasosService {
       );
     }
 
-    return caso;
+    return this.normalizarCasoConCalculos(caso);
   }
 
   async findByNumeroContrato(numeroContrato: string) {
@@ -223,9 +297,12 @@ export class CasosService {
       );
     }
 
-    return caso;
+    return this.normalizarCasoConCalculos(caso);
   }
 
+  // =========================================================================
+  // ACTUALIZACIÓN DE CASOS
+  // =========================================================================
   async update(id: number, updateCasoDto: UpdateCasoDto) {
     const casoActual = await this.prisma.caso.findUnique({
       where: { id },
@@ -262,16 +339,6 @@ export class CasosService {
         )
       : undefined;
 
-    console.log(
-      'DATOS DEL CASO QUE LLEGAN AL BACKEND:',
-      datosCaso,
-    );
-
-    console.log(
-      'PROCESO JURIDICO QUE LLEGA AL BACKEND:',
-      datosProcesoJuridico,
-    );
-
     return this.prisma.$transaction(async (tx) => {
       await tx.caso.update({
         where: { id },
@@ -295,8 +362,8 @@ export class CasosService {
             anteriorId: casoActual.categoriaId,
             nuevoId:
               datosCaso.categoriaId !== undefined
-              ? datosCaso.categoriaId ?? null
-              :casoActual.categoriaId,
+                ? datosCaso.categoriaId ?? null
+                : casoActual.categoriaId,
           },
           {
             tipo: 'ETAPA',
@@ -318,11 +385,6 @@ export class CasosService {
       );
 
       if (datosProcesoJuridico) {
-        console.log(
-          'ACTUALIZANDO PROCESO JURIDICO:',
-          datosProcesoJuridico,
-        );
-
         await tx.procesoJuridico.update({
           where: {
             casoId: id,
@@ -331,13 +393,47 @@ export class CasosService {
         });
       }
 
-      return tx.caso.findUnique({
+      // Obtiene el estado actualizado con relaciones para recalcular la alerta
+      const casoActualizado = await tx.caso.findUnique({
+        where: { id },
+        include: {
+          estado: true,
+          subetapa: true,
+        },
+      });
+
+      if (casoActualizado) {
+        const nuevaAlerta = calcularAlertaActualizacionBase({
+          estado: casoActualizado.estado?.nombre,
+          analistaResponsable: casoActualizado.analistaResponsable,
+          actividad: casoActualizado.subetapa?.nombre,
+          fechaProximaGestion: casoActualizado.fechaProximaGestion,
+        });
+
+        await tx.camposCalculados.upsert({
+          where: { casoId: id },
+          create: {
+            casoId: id,
+            alertaActualizacionBase: nuevaAlerta,
+          },
+          update: {
+            alertaActualizacionBase: nuevaAlerta,
+          },
+        });
+      }
+
+      const casoFinal = await tx.caso.findUnique({
         where: { id },
         include: this.includeCasoCompleto,
       });
+
+      return this.normalizarCasoConCalculos(casoFinal);
     });
   }
 
+  // =========================================================================
+  // ELIMINACIÓN DE CASOS Y LOCATARIOS
+  // =========================================================================
   async remove(id: number) {
     await this.findOne(id);
 

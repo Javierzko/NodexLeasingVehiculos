@@ -4,13 +4,13 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import {
   ImportarCasoFilaDto,
   ImportarCasosDto,
   ResultadoImportacionCasos,
   ResultadoFilaImportacionCaso,
-} from './importar-casos.dto';
+} from '../dto/importar-casos.dto';
 
 @Injectable()
 export class CargaCasosService {

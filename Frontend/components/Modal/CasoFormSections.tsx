@@ -1,4 +1,4 @@
-//raiz components/Modal/CasoFormSections.tsx
+// raiz/components/Modal/CasoFormSections.tsx
 
 'use client';
 
@@ -30,7 +30,6 @@ function CasoFormTabsAdvanced({
     <>
       {activeTab === 'facturacion' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
           <div>
             <label className="block text-xs font-bold uppercase text-slate-700">
               Honorarios ($)
@@ -142,101 +141,11 @@ function CasoFormTabsAdvanced({
               className="w-full border p-2 rounded text-sm"
             />
           </div>
-
-          <div className="col-span-2 border-t pt-3 font-bold text-slate-700 text-sm">
-            Medición de Tiempos (Días / KPIs)
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase text-slate-700">
-              Tiempo Entidades Externas
-            </label>
-            <input
-              type="number"
-              step="0.1"
-              name="tiempoEntidadesExternas"
-              value={formData.tiempoEntidadesExternas ?? ''}
-              onChange={handleChange}
-              className="w-full border p-2 rounded text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase text-slate-700">
-              Tiempo Banco
-            </label>
-            <input
-              type="number"
-              step="0.1"
-              name="tiempoBanco"
-              value={formData.tiempoBanco ?? ''}
-              onChange={handleChange}
-              className="w-full border p-2 rounded text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase text-slate-700">
-              Tiempo Jurídico Externo
-            </label>
-            <input
-              type="number"
-              step="0.1"
-              name="tiempoJuridicoExterno"
-              value={formData.tiempoJuridicoExterno ?? ''}
-              onChange={handleChange}
-              className="w-full border p-2 rounded text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase text-slate-700">
-              Tiempo Jurídico Interno
-            </label>
-            <input
-              type="number"
-              step="0.1"
-              name="tiempoJuridicoInterno"
-              value={formData.tiempoJuridicoInterno ?? ''}
-              onChange={handleChange}
-              className="w-full border p-2 rounded text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase text-slate-700">
-              Tiempo Tránsito
-            </label>
-            <input
-              type="number"
-              step="0.1"
-              name="tiempoTransito"
-              value={formData.tiempoTransito ?? ''}
-              onChange={handleChange}
-              className="w-full border p-2 rounded text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase text-slate-700">
-              Tiempo Operativo Analista
-            </label>
-            <input
-              type="number"
-              step="0.1"
-              name="tiempoOperativoAnalista"
-              value={formData.tiempoOperativoAnalista ?? ''}
-              onChange={handleChange}
-              className="w-full border p-2 rounded text-sm"
-            />
-          </div>
-
         </div>
       )}
 
       {activeTab === 'juridico' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
           <div>
             <label className="block text-xs font-bold uppercase text-slate-700">
               Fecha Escalamiento Entidad Ex.
@@ -314,7 +223,6 @@ function CasoFormTabsAdvanced({
               className="w-full border p-2 rounded text-sm"
             />
           </div>
-
 
           <div>
             <label className="block text-xs font-bold uppercase text-slate-700">
@@ -443,13 +351,11 @@ function CasoFormTabsAdvanced({
               className="w-full border p-2 rounded text-sm"
             />
           </div>
-
         </div>
       )}
 
       {activeTab === 'multas' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
           <div>
             <label className="block text-xs font-bold uppercase text-slate-700">
               Limitaciones Propiedad
@@ -557,7 +463,6 @@ function CasoFormTabsAdvanced({
               className="w-full border p-2 rounded text-sm"
             />
           </div>
-
         </div>
       )}
     </>

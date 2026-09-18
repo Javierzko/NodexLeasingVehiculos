@@ -1,45 +1,56 @@
+// src/components/detalleCaso.tsx
+
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
+import { AuditoriaMulta, Caso, ProcesoJuridico } from '@/types/leasing';
 import {
-  AuditoriaMulta,
-  Caso,
-  ProcesoJuridico,
-} from '@/types/leasing';
+  Calendar, User, FileText, Scale, AlertTriangle,
+  Calculator, Copy, Check, type LucideIcon, Activity
+} from 'lucide-react';
 
-interface DetalleCasoProps {
-  caso: Caso;
-}
+import { SeccionCamposANS } from '../components/CampoDetallesCaso/SeccionCamposANS';
+import { SeccionTiemposKPI2 } from '../components/CampoDetallesCaso/SeccionTiemposKPI2';
 
-const texto = (valor: unknown, valorAlternativo = '-') =>
-  valor !== null && valor !== undefined && valor !== ''
-    ? String(valor)
-    : valorAlternativo;
+interface DetalleCasoProps { caso: Caso; onVolver?: () => void }
 
-const booleano = (valor?: boolean | null) =>
+type Formato = 'fecha' | 'booleano' | 'moneda';
+type Tono = 'exito' | 'alerta';
+
+/* =========================================================
+   FORMATEADORES
+========================================================= */
+
+const texto = (valor: unknown, valorAlternativo = '—'): string =>
+  valor === null || valor === undefined || valor === '' ? valorAlternativo : String(valor);
+
+const booleano = (valor?: boolean | null): string =>
   valor === true ? 'Sí' : valor === false ? 'No' : 'No informado';
 
-const formatDate = (valor?: string | Date | null) => {
-  if (!valor) return '-';
-
-  const fecha = new Date(valor);
+const formatDate = (valor?: string | Date | null): string => {
+  if (!valor) return '—';
+  const raw = String(valor);
+  const fecha = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T00:00:00`) : new Date(raw);
   return Number.isNaN(fecha.getTime())
-    ? '-'
-    : fecha.toLocaleDateString('es-CO', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        timeZone: 'UTC',
-      });
+    ? '—'
+    : new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeZone: 'UTC' }).format(fecha);
 };
 
-const estadoVigencia = (valor?: string | Date | null) => {
+const formatCurrency = (valor?: number | string | null): string => {
+  if (valor === null || valor === undefined || valor === '') return '—';
+  const numero = Number(valor);
+  return Number.isFinite(numero)
+    ? new Intl.NumberFormat('es-CO', {
+        style: 'currency', currency: 'COP', maximumFractionDigits: 0,
+      }).format(numero)
+    : '—';
+};
+
+const estadoVigencia = (valor?: string | Date | null): string => {
   if (!valor) return 'No informado';
 
-  const fecha =
-    typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor)
-      ? new Date(`${valor}T00:00:00`)
-      : new Date(valor);
+  const raw = String(valor);
+  const fecha = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T00:00:00`) : new Date(raw);
   if (Number.isNaN(fecha.getTime())) return 'No informado';
 
   const hoy = new Date();
@@ -49,377 +60,542 @@ const estadoVigencia = (valor?: string | Date | null) => {
   return fecha >= hoy ? 'Vigente' : 'No vigente';
 };
 
-const formatCurrency = (valor?: number | string | null) => {
-  if (valor === null || valor === undefined || valor === '') return '-';
-
-  const numero = Number(valor);
-  if (!Number.isFinite(numero)) return '-';
-
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(numero);
+const tonoVigencia = (valor?: string | Date | null): Tono | undefined => {
+  const estado = estadoVigencia(valor);
+  return estado === 'Vigente' ? 'exito' : estado === 'No vigente' ? 'alerta' : undefined;
 };
 
-const Field: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
-  <div className="min-w-0 rounded-lg border border-slate-100 bg-white p-3">
-    <span className="block text-[11px] font-medium text-slate-400">
-      {label}
-    </span>
-    <strong className="break-words text-xs text-slate-800">
-      {value}
-    </strong>
-  </div>
-);
+const facturacionEstado = (facturado?: boolean | null): string =>
+  facturado === true ? 'Facturado' : facturado === false ? 'Pendiente' : 'No informado';
 
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <details open className="group rounded-2xl border border-[#d8e8e4] bg-white shadow-sm">
-    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-xs font-bold uppercase tracking-[0.12em] text-[#347365] [&::-webkit-details-marker]:hidden">
-      <span>{title}</span>
-      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#e3f2ee] text-sm text-[#438b7d] transition-transform group-open:rotate-180">⌄</span>
-    </summary>
-    <div className="space-y-4 border-t border-[#e5efec] px-5 pb-5 pt-4">
+const mostrar = (valor: unknown, formato?: Formato): string =>
+  formato === 'fecha' ? formatDate(valor as string | Date | null | undefined)
+  : formato === 'booleano' ? booleano(valor as boolean | null | undefined)
+  : formato === 'moneda' ? formatCurrency(valor as number | string | null | undefined)
+  : texto(valor);
+
+const esVacio = (valor: string) => valor === '—' || valor === 'No informado';
+
+/* =========================================================
+   CAMPO
+========================================================= */
+
+interface CampoProps {
+  etiqueta: string;
+  valor: unknown;
+  formato?: Formato;
+  destacado?: boolean;
+  tono?: Tono;
+}
+
+const Campo: React.FC<CampoProps> = ({ etiqueta, valor, formato, destacado = false, tono }) => {
+  const [copiado, setCopiado] = useState(false);
+  const textoValor = mostrar(valor, formato);
+  const puedeCopiar = !esVacio(textoValor);
+
+  const copiar = async () => {
+    if (!puedeCopiar) return;
+    try {
+      await navigator.clipboard.writeText(textoValor);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 1200);
+    } catch {
+      // El navegador puede bloquear clipboard en algunos contextos.
+    }
+  };
+
+  const claseValor = tono === 'exito'
+    ? 'font-bold text-emerald-600'
+    : tono === 'alerta'
+      ? 'font-bold text-red-600'
+      : esVacio(textoValor)
+        ? 'font-normal text-slate-300'
+        : destacado
+          ? 'font-bold text-slate-900'
+          : 'font-semibold text-slate-800';
+
+  return (
+    <div className="group flex items-center justify-between gap-3 rounded-md px-2 py-2 transition-colors hover:bg-slate-50">
+      <span className="shrink-0 text-[11px] font-medium text-slate-500">{etiqueta}</span>
+
+      <div className="flex min-w-0 items-center gap-1.5 text-right">
+        <span className={`break-words text-xs ${claseValor}`}>{textoValor}</span>
+
+        {puedeCopiar && (
+          <button
+            type="button"
+            onClick={copiar}
+            title="Copiar"
+            className="rounded p-0.5 text-slate-400 opacity-0 transition-all hover:bg-slate-200 hover:text-slate-700 group-hover:opacity-100"
+          >
+            {copiado
+              ? <Check className="h-3 w-3 text-emerald-600" />
+              : <Copy className="h-3 w-3" />}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* =========================================================
+   BLOQUE DE CAMPOS
+========================================================= */
+
+type CampoDef = [string, unknown, Formato?, boolean?, Tono?];
+
+interface BloqueProps { titulo: string; campos?: CampoDef[]; children?: React.ReactNode }
+
+const Bloque: React.FC<BloqueProps> = ({ titulo, campos, children }) => (
+  <div className="rounded-lg border border-slate-100 bg-slate-50/30 p-4">
+    <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">{titulo}</h3>
+
+    <div className="divide-y divide-slate-100">
+      {campos?.map(([etiqueta, valor, formato, destacado, tono]) => (
+        <Campo
+          key={etiqueta}
+          etiqueta={etiqueta}
+          valor={valor}
+          formato={formato}
+          destacado={destacado}
+          tono={tono}
+        />
+      ))}
       {children}
     </div>
-  </details>
-);
-
-const Grid: React.FC<{ children: React.ReactNode; columns?: string }> = ({
-  children,
-  columns = 'grid-cols-1 sm:grid-cols-2 md:grid-cols-4',
-}) => (
-  <div className={`grid ${columns} gap-3 rounded-xl border border-[#e5efec] bg-[#f7fbfa] p-4`}>
-    {children}
   </div>
 );
 
-export const DetalleCaso: React.FC<DetalleCasoProps> = ({ caso }) => {
+/* =========================================================
+   TARJETA RESUMEN
+========================================================= */
+
+const Resumen: React.FC<{ titulo: string; valor: React.ReactNode }> = ({ titulo, valor }) => (
+  <div className="rounded-lg bg-slate-50 p-3">
+    <p className="text-[11px] font-medium text-slate-400">{titulo}</p>
+    <p className="mt-0.5 break-words text-xs font-semibold text-slate-800">{valor}</p>
+  </div>
+);
+
+/* =========================================================
+   NOTAS / OBSERVACIONES
+========================================================= */
+
+const Notas: React.FC<{ items: [string, string | null | undefined][] }> = ({ items }) => {
+  const visibles = items.filter(([, contenido]) => contenido);
+  if (!visibles.length) return null;
+
+  return (
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      {visibles.map(([titulo, contenido]) => (
+        <div key={titulo} className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs">
+          <p className="font-semibold text-slate-700">{titulo}</p>
+          <p className="mt-1 whitespace-pre-wrap text-slate-600">{contenido}</p>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/* =========================================================
+   ESTADO VACÍO
+========================================================= */
+
+const Vacio: React.FC<{ icono: LucideIcon; mensaje: string }> = ({ icono: Icono, mensaje }) => (
+  <div className="rounded-lg border border-slate-100 bg-slate-50 p-6 text-center">
+    <Icono className="mx-auto mb-2 h-6 w-6 text-slate-300" />
+    <p className="text-xs italic text-slate-400">{mensaje}</p>
+  </div>
+);
+
+/* =========================================================
+   PESTAÑAS
+========================================================= */
+
+const TABS = [
+  { id: 'proceso', label: 'Progreso y Fechas', icon: Calendar },
+  { id: 'ans', label: 'Campos ANS', icon: Activity },
+  { id: 'partes', label: 'Locatario y Vehículo', icon: User },
+  { id: 'traspaso', label: 'Traspaso y Facturación', icon: FileText },
+  { id: 'juridico', label: 'Información Jurídica', icon: Scale },
+  { id: 'multas', label: 'Multas e Impuestos', icon: AlertTriangle },
+  { id: 'kpi', label: 'Tiempos KPI', icon: Calculator },
+];
+
+/* =========================================================
+   COMPONENTE PRINCIPAL
+========================================================= */
+
+export const DetalleCaso: React.FC<DetalleCasoProps> = ({ caso, onVolver }) => {
+  const [tabActiva, setTabActiva] = useState('proceso');
+
   const procesoJuridico: ProcesoJuridico | null = caso.procesoJuridico ?? null;
   const auditoriaMulta: AuditoriaMulta | null = caso.auditoriaMulta ?? null;
 
+  const estadoActual = texto(caso.estado?.nombre);
+  const estadoContrato = texto(caso.estadoContrato?.nombre);
+  const esInactivo = ['cerrado', 'finalizado', 'inactivo'].includes(estadoActual.toLowerCase());
+  const placa = caso.vehiculo?.placa || caso.vehiculoPlaca;
+
+  const { locatario, vehiculo } = caso;
+
   return (
-    <div className="detalle-caso mx-auto max-w-7xl space-y-6 rounded-2xl border border-[#d8e8e4] bg-white p-4 text-slate-900 shadow-md sm:p-6 lg:p-8">
-      <div className="flex flex-col justify-between gap-5 border-b border-[#e5efec] pb-5 md:flex-row">
+    <div className="min-h-screen bg-slate-100/60 font-sans text-slate-900">
+
+      {/* NAVBAR */}
+      <header className="flex items-center justify-between bg-slate-900 px-6 py-3 text-white sm:px-8">
         <div>
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-[#b9d3cd] bg-[#e3f2ee] px-2.5 py-1 text-xs font-bold text-[#347365]">
-              {texto(caso.estado?.nombre)}
-            </span>
-            {caso.categoria?.nombre && (
-              <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-600">
-                {caso.categoria.nombre}
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Administración</p>
+          <h1 className="text-sm font-semibold">Detalle del caso</h1>
+        </div>
+
+        {onVolver && (
+          <button
+            type="button"
+            onClick={onVolver}
+            className="text-xs text-slate-300 transition-colors hover:text-white"
+          >
+            ← Volver a casos
+          </button>
+        )}
+      </header>
+
+      <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+
+        {/* HERO */}
+        <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">
+          <div className="space-y-1 border-b border-slate-100 pb-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  esInactivo ? 'bg-slate-100 text-slate-600' : 'bg-emerald-50 text-emerald-700'
+                }`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${esInactivo ? 'bg-slate-400' : 'bg-emerald-500'}`} />
+                {estadoActual}
               </span>
-            )}
-          </div>
 
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-            Contrato N°: {texto(caso.numeroContrato)}
-          </h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Radicado Bizagi: <strong>{texto(caso.radicadoBizagi)}</strong>
-          </p>
-        </div>
-
-        <div className="text-left md:text-right">
-          <p className="text-[11px] font-semibold uppercase text-slate-400">
-            Analista Responsable
-          </p>
-          <p className="text-sm font-semibold text-[#347365]">
-            {texto(caso.analistaResponsable)}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Estado Contrato:{' '}
-            <strong>{texto(caso.estadoContrato?.nombre)}</strong>
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-xl border border-[#d8e8e4] bg-[#f7fbfa] p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-[#6d8581]">Estado actual</p>
-          <p className="mt-2 text-sm font-bold text-[#347365]">{texto(caso.estado?.nombre)}</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Etapa</p>
-          <p className="mt-2 text-sm font-bold text-slate-800">{texto(caso.etapa?.nombre)}</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Próxima gestión</p>
-          <p className="mt-2 text-sm font-bold text-slate-800">{formatDate(caso.fechaProximaGestion)}</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Vehículo</p>
-          <p className="mt-2 text-sm font-bold text-slate-800">{texto(caso.vehiculo?.placa || caso.vehiculoPlaca)}</p>
-        </div>
-      </div>
-
-      <Section title="Estado y Condiciones del Expediente">
-        <Grid>
-          <Field label="Estado" value={texto(caso.estado?.nombre)} />
-          <Field label="Estado Contrato" value={texto(caso.estadoContrato?.nombre)} />
-          <Field label="Categoría" value={texto(caso.categoria?.nombre)} />
-          <Field label="Etapa Actual" value={texto(caso.etapa?.nombre)} />
-          <Field label="Subetapa" value={texto(caso.subetapa?.nombre)} />
-          <Field label="Causa del Atraso" value={texto(caso.causaAtraso?.nombre)} />
-          <Field
-            label="Estado de Matrícula"
-            value={texto(caso.vehiculo?.estadoMatricula?.nombre)}
-          />
-          <Field
-            label="Inscripción Opción de Compra"
-            value={booleano(caso.aplicaInscripcionOpcionCompra)}
-          />
-          <Field
-            label="Valor Opción de Compra"
-            value={formatCurrency(caso.valorOpcionCompra)}
-          />
-        </Grid>
-      </Section>
-
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <Section title="Información del Locatario">
-          {caso.locatario ? (
-            <div className="space-y-5 text-xs text-slate-600">
-              <div>
-                <h3 className="mb-2 border-b border-[#e5efec] pb-2 text-[11px] font-bold uppercase tracking-wide text-[#347365]">
-                  Identificación
-                </h3>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Field label="Razón social / Banco" value={texto(caso.locatario.nombreBanco || caso.locatario.nombreComercial)} />
-                  <Field label="NIT / Cédula" value={texto(caso.locatario.nit)} />
-                  <Field label="Tipo de documento" value={texto(caso.locatario.tipoDocumento)} />
-                  <Field label="Locatario RUNT" value={texto(caso.locatario.locatarioRunt)} />
-                </div>
-              </div>
-
-              <div>
-                <h3 className="mb-2 border-b border-[#e5efec] pb-2 text-[11px] font-bold uppercase tracking-wide text-[#347365]">
-                  Contacto y envío
-                </h3>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Field label="Email principal" value={texto(caso.locatario.email)} />
-                  <Field label="Email comercial" value={texto(caso.locatario.emailComercial)} />
-                  <Field label="Nombre de contacto" value={texto(caso.locatario.contactoNombre)} />
-                  <Field label="Número de contacto" value={texto(caso.locatario.contactoNumero)} />
-                  <Field label="Dirección de envío" value={texto(caso.locatario.direccionEnvio)} />
-                </div>
-              </div>
-
-              <div>
-                <h3 className="mb-2 border-b border-[#e5efec] pb-2 text-[11px] font-bold uppercase tracking-wide text-[#347365]">
-                  Verificaciones
-                </h3>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Field label="Revisión de correo" value={booleano(caso.locatario.revisionCorreo)} />
-                  <Field label="Revisión de mail comercial" value={booleano(caso.locatario.revisionMailComercial)} />
-                </div>
-              </div>
+              {caso.categoria?.nombre && (
+                <>
+                  <span className="text-xs text-slate-300">•</span>
+                  <span className="text-xs text-slate-500">{caso.categoria.nombre}</span>
+                </>
+              )}
             </div>
-          ) : (
-            <p className="text-xs italic text-slate-400">No hay locatario vinculado.</p>
-          )}
-        </Section>
 
-        <Section title="Información del Vehículo y Propietario">
-          {caso.vehiculo ? (
-            <div className="space-y-5 text-xs text-slate-600">
-              <div>
-                <h3 className="mb-2 border-b border-[#e5efec] pb-2 text-[11px] font-bold uppercase tracking-wide text-[#347365]">
-                  Identificación del vehículo
-                </h3>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Field label="Placa" value={<span className="font-bold text-[#347365]">{texto(caso.vehiculo.placa || caso.vehiculoPlaca)}</span>} />
-                  <Field label="Estado de matrícula" value={texto(caso.vehiculo.estadoMatricula?.nombre)} />
-                  <Field label="VIN" value={texto(caso.vehiculo.vin)} />
-                  <Field label="Chasis" value={texto(caso.vehiculo.chasis)} />
-                  <Field label="Motor" value={texto(caso.vehiculo.motor)} />
-                  <Field label="Serie" value={texto(caso.vehiculo.serie)} />
-                </div>
-              </div>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+              Contrato N° {texto(caso.numeroContrato)}
+            </h2>
 
-              <div>
-                <h3 className="mb-2 border-b border-[#e5efec] pb-2 text-[11px] font-bold uppercase tracking-wide text-[#347365]">
-                  Características y clasificación
-                </h3>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Field label="Marca / Línea / Modelo" value={`${texto(caso.vehiculo.marca)} / ${texto(caso.vehiculo.linea)} / ${texto(caso.vehiculo.modelo)}`} />
-                  <Field label="Tipo de vehículo" value={texto(caso.vehiculo.tipoVehiculo)} />
-                  <Field label="Cilindraje" value={texto(caso.vehiculo.cilindraje)} />
-                  <Field label="Color" value={texto(caso.vehiculo.color)} />
-                  <Field label="Tipo de servicio" value={texto(caso.vehiculo.tipoServicio)} />
-                  <Field label="Tipo de carrocería" value={texto(caso.vehiculo.tipoCarroceria)} />
-                  <Field label="Combustible" value={texto(caso.vehiculo.tipoCombustible)} />
-                  <Field label="Blindaje" value={texto(caso.vehiculo.blindaje)} />
-                </div>
-              </div>
-
-              <div>
-                <h3 className="mb-2 border-b border-[#e5efec] pb-2 text-[11px] font-bold uppercase tracking-wide text-[#347365]">
-                  Documentación y ubicación
-                </h3>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Field label="SOAT" value={texto(caso.vehiculo.soat?.nombre)} />
-                  <Field label="Vigencia SOAT" value={formatDate(caso.vehiculo.vigenciaSoat)} />
-                  <Field label="Estado SOAT" value={<span className={estadoVigencia(caso.vehiculo.vigenciaSoat) === 'Vigente' ? 'font-bold text-emerald-600' : 'font-bold text-red-600'}>{estadoVigencia(caso.vehiculo.vigenciaSoat)}</span>} />
-                  <Field label="Tecnomecánica" value={texto(caso.vehiculo.revisionTecnomecanica?.nombre)} />
-                  <Field label="Vigencia tecnomecánica" value={formatDate(caso.vehiculo.vigenciaTecno)} />
-                  <Field label="Estado tecnomecánica" value={<span className={estadoVigencia(caso.vehiculo.vigenciaTecno) === 'Vigente' ? 'font-bold text-emerald-600' : 'font-bold text-red-600'}>{estadoVigencia(caso.vehiculo.vigenciaTecno)}</span>} />
-                  <Field label="Tránsito / Organismo" value={texto(caso.vehiculo.transito)} />
-                  <Field label="Departamento" value={texto(caso.vehiculo.departamento)} />
-                  <Field label="Regional" value={texto(caso.vehiculo.regional)} />
-                  <Field label="Empresa transportadora" value={texto(caso.vehiculo.empresaTransportadora)} />
-                </div>
-              </div>
-
-              <div>
-                <h3 className="mb-2 border-b border-[#e5efec] pb-2 text-[11px] font-bold uppercase tracking-wide text-[#347365]">
-                  Propietario
-                </h3>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Field label="Nombre" value={texto(caso.vehiculo.propietario?.nombre)} />
-                  <Field label="Identificación" value={texto(caso.vehiculo.propietario?.identificacion)} />
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-xs italic text-slate-400">No hay vehículo vinculado.</p>
-          )}
-        </Section>
-      </div>
-
-      <Section title="Gestión, Fechas Clave y Tiempos">
-        <Grid>
-          <Field label="Fecha del Caso" value={formatDate(caso.fecha)} />
-          <Field label="Fecha Asignación" value={formatDate(caso.fechaAsignacion)} />
-          <Field label="Última Gestión" value={formatDate(caso.fechaUltimaGestion)} />
-          <Field label="Próxima Gestión" value={formatDate(caso.fechaProximaGestion)} />
-          <Field label="Cierre Traspaso" value={formatDate(caso.fechaCierreTraspaso)} />
-          <Field label="Cierre Traspaso Bizagi" value={formatDate(caso.fechaCierreTraspasoBizagi)} />
-          <Field label="Causa Atraso" value={texto(caso.causaAtraso?.nombre)} />
-          <Field label="Solicitud Suspensión" value={formatDate(caso.fechaSolicitudSuspension)} />
-          <Field label="Hasta Suspensión" value={formatDate(caso.fechaHastaSuspension)} />
-        </Grid>
-
-        {caso.observacionesGestion && (
-          <div className="rounded-lg border border-[#d8e8e4] bg-[#f7fbfa] p-3 text-xs">
-            <strong className="text-[#347365]">Observaciones de Gestión</strong>
-            <p className="mt-1 whitespace-pre-wrap text-[#52716b]">{caso.observacionesGestion}</p>
+            <p className="text-xs font-medium text-slate-500">
+              Radicado Bizagi:{' '}
+              <strong className="text-slate-800">{texto(caso.radicadoBizagi)}</strong>
+            </p>
           </div>
-        )}
-        {caso.ultimoComentario && (
-          <div className="rounded-lg border border-[#d8e8e4] bg-[#f7fbfa] p-3 text-xs">
-            <strong className="text-[#347365]">Último Comentario</strong>
-            <p className="mt-1 whitespace-pre-wrap text-[#52716b]">{caso.ultimoComentario}</p>
-          </div>
-        )}
-      </Section>
 
-      <Section title="Notificaciones, Traspaso y Logística">
-        <Grid columns="grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
-          <Field label="¿Se envió Notificación?" value={booleano(caso.seEnvioNotificacion)} />
-          <Field label="Fecha Debes Enviar Notificación" value={formatDate(caso.fechaDebesEnviarNotificacion)} />
-          <Field label="Notificación Inicial" value={formatDate(caso.fechaNotificacionInicial)} />
-          <Field label="Última Notificación" value={formatDate(caso.fechaUltimaNotificacion)} />
-          <Field label="Próxima Notificación" value={formatDate(caso.fechaProximaNotificacion)} />
-          <Field label="Traspaso Con Cita" value={booleano(caso.traspasoConCita)} />
-          <Field label="Inicio Cita Tránsito" value={formatDate(caso.fechaInicioCitaTransito)} />
-          <Field label="Consecución Cita" value={formatDate(caso.fechaConsecucionCitaTransito)} />
-          <Field label="Cita Tránsito" value={formatDate(caso.fechaCitaTransito)} />
-          <Field label="Radicación Traspaso" value={formatDate(caso.fechaRadicacionTraspaso)} />
-          <Field label="Fecha Rechazo" value={formatDate(caso.fechaRechazo)} />
-          <Field label="Subsanación Rechazo" value={formatDate(caso.fechaSubsanacionRechazo)} />
-          <Field label="Traspaso Aprobado" value={formatDate(caso.fechaTraspasoAprobado)} />
-          <Field label="Ubicación Tarjeta" value={texto(caso.ubicacionTarjeta)} />
-          <Field label="Corresponsal Tramitador" value={texto(caso.nombreCorresponsalTramitador)} />
-          <Field label="Fecha Entrega Datos Envío" value={formatDate(caso.fechaEntregaDatosEnvio)} />
-          <Field label="Programación Entrega TP" value={formatDate(caso.fechaProgramacionEntregaTp)} />
-          <Field label="Entrega TP Locatario" value={formatDate(caso.fechaEntregaTpLocatario)} />
-        </Grid>
-      </Section>
-
-      <Section title="Facturación y Tiempos KPI">
-        <Grid columns="grid-cols-1 md:grid-cols-2">
-          <Field label="Honorarios GP" value={`${formatCurrency(caso.honorarios)} — ${booleano(caso.facturado) === 'Sí' ? 'Facturado' : booleano(caso.facturado) === 'No' ? 'Pendiente' : 'No informado'}`} />
-          <Field label="N° Factura GP" value={`${texto(caso.numeroFactura)} — ${formatDate(caso.fechaFactura)}`} />
-          <Field label="Honorarios Jurídicos" value={`${formatCurrency(caso.honorariosServiciosJuridicos)} — ${booleano(caso.facturadoJuridico) === 'Sí' ? 'Facturado' : booleano(caso.facturadoJuridico) === 'No' ? 'Pendiente' : 'No informado'}`} />
-          <Field label="N° Factura Jurídico" value={`${texto(caso.numeroFacturaJuridico)} — ${formatDate(caso.fechaFacturaJuridico)}`} />
-          <Field label="Fórmula Traspasos GPA" value={texto(caso.formulaTraspasosGpa)} />
-        </Grid>
-
-        {(caso.observacionesGp || caso.observacionesGeneral) && (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {caso.observacionesGp && (
-              <div className="rounded-lg border border-[#d8e8e4] bg-[#f7fbfa] p-3 text-xs">
-                <strong className="text-[#347365]">Observaciones GP</strong>
-                <p className="mt-1 whitespace-pre-wrap text-[#52716b]">{caso.observacionesGp}</p>
-              </div>
-            )}
-            {caso.observacionesGeneral && (
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
-                <strong className="text-slate-900">Observaciones Generales</strong>
-                <p className="mt-1 whitespace-pre-wrap text-slate-700">{caso.observacionesGeneral}</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="border-t pt-3">
-          <p className="mb-2 text-xs font-semibold text-slate-700">Tiempos Transcurridos (Días)</p>
-          <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-3">
-            <Field label="Ent. Externas" value={texto(caso.tiempoEntidadesExternas, '0') + 'd'} />
-            <Field label="Banco" value={texto(caso.tiempoBanco, '0') + 'd'} />
-            <Field label="Jurídico Externo" value={texto(caso.tiempoJuridicoExterno, '0') + 'd'} />
-            <Field label="Jurídico Interno" value={texto(caso.tiempoJuridicoInterno, '0') + 'd'} />
-            <Field label="Tránsito" value={texto(caso.tiempoTransito, '0') + 'd'} />
-            <Field label="Operativo Analista" value={texto(caso.tiempoOperativoAnalista, '0') + 'd'} />
+          {/* MÉTRICAS */}
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Resumen titulo="Estado actual" valor={estadoActual} />
+            <Resumen titulo="Etapa actual" valor={texto(caso.etapa?.nombre)} />
+            <Resumen titulo="Analista" valor={texto(caso.analistaResponsable)} />
+            <Resumen titulo="Próxima gestión" valor={formatDate(caso.fechaProximaGestion)} />
           </div>
         </div>
-      </Section>
 
-      <Section title="Información Procesal / Jurídica">
-        {procesoJuridico ? (
-          <Grid>
-            <Field label="Juzgado" value={texto(procesoJuridico.juzgado)} />
-            <Field label="Radicado Tutela" value={texto(procesoJuridico.numeroRadicadoTutela)} />
-            <Field label="Tipo Saneamiento" value={texto(procesoJuridico.tipoSaneamientoARealizar?.nombre)} />
-            <Field label="Escalamiento Entidad Externa" value={formatDate(procesoJuridico.fechaEscalamientoEntidadEx)} />
-            <Field label="Respuesta Entidad Externa" value={formatDate(procesoJuridico.fechaRespuestaEntidadEx)} />
-            <Field label="Liquidación Pasivos" value={formatDate(procesoJuridico.fechaLiquidacionTotalPasivos)} />
-            <Field label="Solicitud Recursos" value={formatDate(procesoJuridico.fechaSolicitudRecursos)} />
-            <Field label="Desembolso Recursos" value={formatDate(procesoJuridico.fechaDesembolsoRecursos)} />
-            <Field label="Fin Diagnóstico Pago Pasivos" value={formatDate(procesoJuridico.fechaFinDiagnosticoPagoPasivos)} />
-            <Field label="Solicitud Saneamiento Jurídico" value={formatDate(procesoJuridico.fechaSolicitudSaneamientoJuridico)} />
-            <Field label="Fin Saneamiento Jurídico" value={formatDate(procesoJuridico.fechaFinSaneamientoJuridico)} />
-            <Field label="Radicación DP" value={formatDate(procesoJuridico.fechaRadicacionDp)} />
-            <Field label="Respuesta DP" value={formatDate(procesoJuridico.fechaRespuestaDp)} />
-            <Field label="Radicación Tutela" value={formatDate(procesoJuridico.fechaRadicacionTutela)} />
-            <Field label="Solicitud Docs. Adicionales" value={formatDate(procesoJuridico.fechaSolicitudDocsAdicionalesTraspaso)} />
-            <Field label="Entrega Docs. Adicionales" value={formatDate(procesoJuridico.fechaEntregaDocsAdicionalesTraspaso)} />
-            <Field label="Fin Gestión Documental" value={formatDate(procesoJuridico.fechaFinGestionDocumentalTraspaso)} />
-          </Grid>
-        ) : (
-          <p className="text-xs italic text-slate-400">No hay proceso jurídico registrado.</p>
-        )}
-      </Section>
+        {/* CONTENEDOR PRINCIPAL */}
+        <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
 
-      <Section title="Auditoría de Multas e Impuestos">
-        {auditoriaMulta ? (
-          <Grid>
-            <Field label="Limitaciones Propiedad" value={texto(auditoriaMulta.limitacionesPropiedad, 'Ninguna')} />
-            <Field label="Tipo de Limitaciones" value={texto(auditoriaMulta.tipoLimitaciones, 'No informado')} />
-            <Field label="Garantías Mobiliarias" value={texto(auditoriaMulta.garantiasMobiliarias, 'Ninguna')} />
-            <Field label="SIMIT Propietario" value={texto(auditoriaMulta.simitMultasPropietarioResoluciones, 'Sin novedades')} />
-            <Field label="SIMIT Locatario" value={texto(auditoriaMulta.simitMultasLocatario, 'Sin novedades')} />
-            <Field label="Multas Placa" value={texto(auditoriaMulta.multasPlaca, 'Sin novedades')} />
-            <Field label="Impuestos" value={texto(auditoriaMulta.impuestos, 'Sin novedades')} />
-            <Field label="Vigencias Adeudadas" value={texto(auditoriaMulta.vigenciasAdeudadas, 'Sin novedades')} />
-            <Field label="Impuestos Tránsito" value={texto(auditoriaMulta.impuestosTransito, 'Sin novedades')} />
-          </Grid>
-        ) : (
-          <p className="text-xs italic text-slate-400">No hay auditoría de multas registrada.</p>
-        )}
-      </Section>
+          {/* PESTAÑAS */}
+          <div className="overflow-x-auto border-b border-slate-100 bg-slate-50/50 px-3 pt-2 sm:px-4">
+            <nav className="flex min-w-max gap-1">
+              {TABS.map(({ id, label, icon: Icon }) => {
+                const activa = tabActiva === id;
+
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setTabActiva(id)}
+                    className={`inline-flex items-center gap-2 border-b-2 px-3 py-3 text-xs font-semibold transition-all sm:px-4 ${
+                      activa
+                        ? 'rounded-t-lg border-slate-900 bg-white text-slate-900 shadow-sm'
+                        : 'border-transparent text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 ${activa ? 'text-slate-900' : 'text-slate-400'}`} />
+                    {label}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* CONTENIDO */}
+          <div className="p-4 sm:p-6">
+
+            {/* PROCESO */}
+            {tabActiva === 'proceso' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <Bloque
+                    titulo="Estado y Datos del Expediente"
+                    campos={[
+                      ['Estado', caso.estado?.nombre, undefined, true],
+                      ['Estado contrato', caso.estadoContrato?.nombre],
+                      ['Categoría', caso.categoria?.nombre],
+                      ['Etapa actual', caso.etapa?.nombre, undefined, true],
+                      ['Subetapa', caso.subetapa?.nombre],
+                      ['Causa del atraso', caso.causaAtraso?.nombre],
+                      ['Estado matrícula', vehiculo?.estadoMatricula?.nombre],
+                      ['Inscripción opción compra', caso.aplicaInscripcionOpcionCompra, 'booleano'],
+                      ['Valor opción compra', caso.valorOpcionCompra, 'moneda'],
+                    ]}
+                  />
+
+                  <Bloque
+                    titulo="Gestión"
+                    campos={[
+                      ['Fecha del caso', caso.fecha, 'fecha'],
+                      ['Fecha asignación', caso.fechaAsignacion, 'fecha'],
+                      ['Última gestión', caso.fechaUltimaGestion, 'fecha'],
+                      ['Próxima gestión', caso.fechaProximaGestion, 'fecha'],
+                      ['Cierre traspaso', caso.fechaCierreTraspaso, 'fecha'],
+                      ['Cierre traspaso Bizagi', caso.fechaCierreTraspasoBizagi, 'fecha'],
+                      ['Solicitud suspensión', caso.fechaSolicitudSuspension, 'fecha'],
+                      ['Hasta suspensión', caso.fechaHastaSuspension, 'fecha'],
+                    ]}
+                  />
+                </div>
+
+                <Notas
+                  items={[
+                    ['Observaciones de gestión', caso.observacionesGestion],
+                    ['Último comentario', caso.ultimoComentario],
+                  ]}
+                />
+              </div>
+            )}
+
+            {/* CAMPOS ANS */}
+            {tabActiva === 'ans' && (
+              <SeccionCamposANS casoId={caso.id} />
+            )}
+
+            {/* LOCATARIO Y VEHÍCULO */}
+            {tabActiva === 'partes' && (
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+
+                {/* LOCATARIO */}
+                <Bloque
+                  titulo="Información del Locatario"
+                  campos={locatario ? [
+                    ['Razón social / Banco', locatario.nombreBanco || locatario.nombreComercial, undefined, true],
+                    ['NIT / Cédula', locatario.nit],
+                    ['Tipo documento', locatario.tipoDocumento],
+                    ['Locatario RUNT', locatario.locatarioRunt],
+                    ['Email principal', locatario.email],
+                    ['Email comercial', locatario.emailComercial],
+                    ['Nombre contacto', locatario.contactoNombre],
+                    ['Número contacto', locatario.contactoNumero],
+                    ['Dirección envío', locatario.direccionEnvio],
+                    ['Revisión correo', locatario.revisionCorreo, 'booleano'],
+                    ['Revisión mail comercial', locatario.revisionMailComercial, 'booleano'],
+                  ] : undefined}
+                >
+                  {!locatario && (
+                    <p className="py-4 text-xs italic text-slate-400">No hay locatario vinculado.</p>
+                  )}
+                </Bloque>
+
+                {/* VEHÍCULO */}
+                <Bloque
+                  titulo="Información del Vehículo y Propietario"
+                  campos={vehiculo ? [
+                    ['Placa', placa, undefined, true],
+                    ['Estado matrícula', vehiculo.estadoMatricula?.nombre],
+                    ['VIN', vehiculo.vin],
+                    ['Chasis', vehiculo.chasis],
+                    ['Motor', vehiculo.motor],
+                    ['Serie', vehiculo.serie],
+                    ['Marca / Línea / Modelo', `${texto(vehiculo.marca)} / ${texto(vehiculo.linea)} / ${texto(vehiculo.modelo)}`],
+                    ['Tipo vehículo', vehiculo.tipoVehiculo],
+                    ['Cilindraje', vehiculo.cilindraje],
+                    ['Color', vehiculo.color],
+                    ['Tipo servicio', vehiculo.tipoServicio],
+                    ['Tipo carrocería', vehiculo.tipoCarroceria],
+                    ['Combustible', vehiculo.tipoCombustible],
+                    ['Blindaje', vehiculo.blindaje],
+                    ['SOAT', vehiculo.soat?.nombre],
+                    ['Vigencia SOAT', vehiculo.vigenciaSoat, 'fecha'],
+                    ['Estado SOAT', estadoVigencia(vehiculo.vigenciaSoat), undefined, false, tonoVigencia(vehiculo.vigenciaSoat)],
+                    ['Tecnomecánica', vehiculo.revisionTecnomecanica?.nombre],
+                    ['Vigencia tecnomecánica', vehiculo.vigenciaTecno, 'fecha'],
+                    ['Estado tecnomecánica', estadoVigencia(vehiculo.vigenciaTecno), undefined, false, tonoVigencia(vehiculo.vigenciaTecno)],
+                    ['Tránsito', vehiculo.transito],
+                    ['Departamento', vehiculo.departamento],
+                    ['Regional', vehiculo.regional],
+                    ['Empresa transportadora', vehiculo.empresaTransportadora],
+                    ['Propietario', vehiculo.propietario?.nombre, undefined, true],
+                    ['Identificación propietario', vehiculo.propietario?.identificacion],
+                  ] : undefined}
+                >
+                  {!vehiculo && (
+                    <p className="py-4 text-xs italic text-slate-400">No hay vehículo vinculado.</p>
+                  )}
+                </Bloque>
+              </div>
+            )}
+
+            {/* TRASPASO Y FACTURACIÓN */}
+            {tabActiva === 'traspaso' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <Bloque
+                    titulo="Notificaciones"
+                    campos={[
+                      ['¿Se envió notificación?', caso.seEnvioNotificacion, 'booleano'],
+                      ['Fecha límite notificación', caso.fechaDebesEnviarNotificacion, 'fecha'],
+                      ['Notificación inicial', caso.fechaNotificacionInicial, 'fecha'],
+                      ['Última notificación', caso.fechaUltimaNotificacion, 'fecha'],
+                      ['Próxima notificación', caso.fechaProximaNotificacion, 'fecha'],
+                    ]}
+                  />
+
+                  <Bloque
+                    titulo="Traspaso"
+                    campos={[
+                      ['Traspaso con cita', caso.traspasoConCita, 'booleano'],
+                      ['Inicio cita tránsito', caso.fechaInicioCitaTransito, 'fecha'],
+                      ['Consecución cita', caso.fechaConsecucionCitaTransito, 'fecha'],
+                      ['Cita tránsito', caso.fechaCitaTransito, 'fecha'],
+                      ['Radicación traspaso', caso.fechaRadicacionTraspaso, 'fecha'],
+                      ['Fecha rechazo', caso.fechaRechazo, 'fecha'],
+                      ['Subsanación rechazo', caso.fechaSubsanacionRechazo, 'fecha'],
+                      ['Traspaso aprobado', caso.fechaTraspasoAprobado, 'fecha'],
+                      ['Ubicación tarjeta', caso.ubicacionTarjeta],
+                      ['Corresponsal tramitador', caso.nombreCorresponsalTramitador],
+                    ]}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <Bloque
+                    titulo="Entrega de Tarjeta"
+                    campos={[
+                      ['Entrega datos envío', caso.fechaEntregaDatosEnvio, 'fecha'],
+                      ['Programación entrega TP', caso.fechaProgramacionEntregaTp, 'fecha'],
+                      ['Entrega TP locatario', caso.fechaEntregaTpLocatario, 'fecha'],
+                    ]}
+                  />
+
+                  <Bloque
+                    titulo="Facturación"
+                    campos={[
+                      ['Honorarios GP', `${formatCurrency(caso.honorarios)} — ${facturacionEstado(caso.facturado)}`, undefined, true],
+                      ['N° Factura GP', `${texto(caso.numeroFactura)} — ${formatDate(caso.fechaFactura)}`],
+                      ['Honorarios jurídicos', `${formatCurrency(caso.honorariosServiciosJuridicos)} — ${facturacionEstado(caso.facturadoJuridico)}`],
+                      ['N° Factura jurídico', `${texto(caso.numeroFacturaJuridico)} — ${formatDate(caso.fechaFacturaJuridico)}`],
+                      ['Fórmula traspasos GPA', caso.formulaTraspasosGpa],
+                    ]}
+                  />
+                </div>
+
+                <Notas
+                  items={[
+                    ['Observaciones GP', caso.observacionesGp],
+                    ['Observaciones generales', caso.observacionesGeneral],
+                  ]}
+                />
+              </div>
+            )}
+
+            {/* JURÍDICO */}
+            {tabActiva === 'juridico' && (
+              procesoJuridico ? (
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <Bloque
+                    titulo="Información Procesal"
+                    campos={[
+                      ['Juzgado', procesoJuridico.juzgado],
+                      ['Radicado tutela', procesoJuridico.numeroRadicadoTutela],
+                      ['Tipo saneamiento', procesoJuridico.tipoSaneamientoARealizar?.nombre],
+                      ['Escalamiento entidad externa', procesoJuridico.fechaEscalamientoEntidadEx, 'fecha'],
+                      ['Respuesta entidad externa', procesoJuridico.fechaRespuestaEntidadEx, 'fecha'],
+                      ['Liquidación pasivos', procesoJuridico.fechaLiquidacionTotalPasivos, 'fecha'],
+                      ['Solicitud recursos', procesoJuridico.fechaSolicitudRecursos, 'fecha'],
+                      ['Desembolso recursos', procesoJuridico.fechaDesembolsoRecursos, 'fecha'],
+                    ]}
+                  />
+
+                  <Bloque
+                    titulo="Saneamiento y Tutela"
+                    campos={[
+                      ['Fin diagnóstico pago pasivos', procesoJuridico.fechaFinDiagnosticoPagoPasivos, 'fecha'],
+                      ['Solicitud saneamiento jurídico', procesoJuridico.fechaSolicitudSaneamientoJuridico, 'fecha'],
+                      ['Fin saneamiento jurídico', procesoJuridico.fechaFinSaneamientoJuridico, 'fecha'],
+                      ['Radicación DP', procesoJuridico.fechaRadicacionDp, 'fecha'],
+                      ['Respuesta DP', procesoJuridico.fechaRespuestaDp, 'fecha'],
+                      ['Radicación tutela', procesoJuridico.fechaRadicacionTutela, 'fecha'],
+                      ['Solicitud documentos adicionales', procesoJuridico.fechaSolicitudDocsAdicionalesTraspaso, 'fecha'],
+                      ['Entrega documentos adicionales', procesoJuridico.fechaEntregaDocsAdicionalesTraspaso, 'fecha'],
+                      ['Fin gestión documental', procesoJuridico.fechaFinGestionDocumentalTraspaso, 'fecha'],
+                    ]}
+                  />
+                </div>
+              ) : (
+                <Vacio icono={Scale} mensaje="No hay proceso jurídico registrado." />
+              )
+            )}
+
+            {/* MULTAS */}
+            {tabActiva === 'multas' && (
+              auditoriaMulta ? (
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <Bloque
+                    titulo="Propiedad y Garantías"
+                    campos={[
+                      ['Limitaciones propiedad', texto(auditoriaMulta.limitacionesPropiedad, 'Ninguna')],
+                      ['Tipo de limitaciones', texto(auditoriaMulta.tipoLimitaciones, 'No informado')],
+                      ['Garantías mobiliarias', texto(auditoriaMulta.garantiasMobiliarias, 'Ninguna')],
+                    ]}
+                  />
+
+                  <Bloque
+                    titulo="Multas e Impuestos"
+                    campos={[
+                      ['SIMIT propietario', texto(auditoriaMulta.simitMultasPropietarioResoluciones, 'Sin novedades')],
+                      ['SIMIT locatario', texto(auditoriaMulta.simitMultasLocatario, 'Sin novedades')],
+                      ['Multas placa', texto(auditoriaMulta.multasPlaca, 'Sin novedades')],
+                      ['Impuestos', texto(auditoriaMulta.impuestos, 'Sin novedades')],
+                      ['Vigencias adeudadas', texto(auditoriaMulta.vigenciasAdeudadas, 'Sin novedades')],
+                      ['Impuestos tránsito', texto(auditoriaMulta.impuestosTransito, 'Sin novedades')],
+                    ]}
+                  />
+                </div>
+              ) : (
+                <Vacio icono={AlertTriangle} mensaje="No hay auditoría de multas registrada." />
+              )
+            )}
+
+            {/* KPI */}
+            {tabActiva === 'kpi' && (
+              <SeccionTiemposKPI2
+                casoId={caso.id}
+                placa={placa}
+                estadoContrato={estadoContrato}
+                categoria={caso.categoria?.nombre}
+                etapa={caso.etapa?.nombre}
+                subetapa={caso.subetapa?.nombre}
+                observacionesGestion={caso.observacionesGestion}
+                ultimoComentario={caso.ultimoComentario}
+                observacionesGp={caso.observacionesGp}
+                observacionesGeneral={caso.observacionesGeneral}
+              />
+            )}
+
+          </div>
+        </div>
+      </main>
     </div>
   );
 };

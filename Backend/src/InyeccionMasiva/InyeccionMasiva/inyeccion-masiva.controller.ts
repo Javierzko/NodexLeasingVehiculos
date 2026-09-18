@@ -2,8 +2,8 @@
 
 
 import { Body, Controller, Post } from '@nestjs/common';
-import { InyeccionMasivaService } from './inyeccion-masiva.service';
-import { ImportarVehiculosDto } from './importar-vehiculos.dto';
+import { InyeccionMasivaService } from '../InyeccionMasiva/inyeccion-masiva.service';
+import { ImportarVehiculosDto } from '../dto/importar-vehiculos.dto';
 
 @Controller('inyeccion-masiva')
 export class InyeccionMasivaController {

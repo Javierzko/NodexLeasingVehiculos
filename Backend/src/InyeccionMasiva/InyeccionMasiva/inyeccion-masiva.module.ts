@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { InyeccionMasivaController } from './inyeccion-masiva.controller';
-import { InyeccionMasivaService } from './inyeccion-masiva.service';
-import { CargaCasosController } from './carga-casos.controller';
-import { CargaCasosService } from './carga-casos.service';
+import { InyeccionMasivaService } from '../InyeccionMasiva/inyeccion-masiva.service';
+import { CargaCasosController } from '../cargaCasos/carga-casos.controller';
+import { CargaCasosService } from '../cargaCasos/carga-casos.service';
 
 @Module({
   controllers: [InyeccionMasivaController, CargaCasosController],

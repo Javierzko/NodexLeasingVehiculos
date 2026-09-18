@@ -1,3 +1,5 @@
+// src /inyeccionMasiva/inyecciones-masiva.services
+
 import {
   BadRequestException,
   ConflictException,
@@ -5,11 +7,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import {
   ImportarVehiculoFilaDto,
   ImportarVehiculosDto,
-} from './importar-vehiculos.dto';
+} from '../dto/importar-vehiculos.dto';
 
 interface FilaValida {
   fila: number;

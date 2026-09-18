@@ -14,9 +14,21 @@ import InyeccionMasiva from "@/components/InyeccionMasiva/InyeccionMasiva";
 import CargaCasosExcel from "@/components/InyeccionMasiva/CargaCasosExcel";
 import FiltrosCasos, { FiltrosSeleccionados } from "@/components/FiltrosCasos";
 import Image from "next/image";
+import AutoInyeccionCasos from "@/components/InyeccionMasiva/AutoInyeccionCasos";
+import { TarjetasMetricasAlerta } from "@/components/TarjetasMetricasAlerta";
+import {
+  FiltrosCasosAlertas,
+  FiltrosAlertasSeleccionados,
+} from "@/components/FiltrosCasosAlertas";
 
 type VistaActiva = "casos" | "gestion-masiva";
-type PanelActivo = "inyeccion" | "carga-casos" | "gestion-datos" | null;
+
+type PanelActivo =
+  | "inyeccion"
+  | "carga-casos"
+  | "auto-inyeccion-casos"
+  | "gestion-datos"
+  | null;
 
 const buttonBase =
   "inline-flex items-center justify-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-300/60 disabled:cursor-not-allowed disabled:opacity-50";
@@ -24,7 +36,6 @@ const buttonBase =
 const primaryButton = `${buttonBase} border-slate-600 bg-slate-600 text-white shadow-xs hover:-translate-y-px hover:border-slate-700 hover:bg-slate-700 hover:shadow-sm`;
 const secondaryButton = `${buttonBase} border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900`;
 
-/* Ancho completo y alineación idéntica para todos los ítems del menú lateral */
 const sidebarButton =
   "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200/70 hover:text-slate-900";
 
@@ -55,8 +66,13 @@ export default function LeasingPage() {
     etapa: "",
     subetapa: "",
   });
-  const [vistaActiva, setVistaActiva] = useState<VistaActiva>("casos");
 
+  const [filtrosAlertas, setFiltrosAlertas] = useState<FiltrosAlertasSeleccionados>({
+    analista: "",
+    alerta: "",
+  });
+
+  const [vistaActiva, setVistaActiva] = useState<VistaActiva>("casos");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [casoAEditar, setCasoAEditar] = useState<Caso | null>(null);
   const [mostrarAgregarGestion, setMostrarAgregarGestion] = useState(false);
@@ -78,17 +94,6 @@ export default function LeasingPage() {
     }
   }, []);
 
-  //=============== cambio para abrir y cerrar =====================
-
-const handleCasoGuardado = async () => {
-  setModalAbierto(false);
-  setCasoAEditar(null);
-  await cargarCasos();
-};
-
-
-
-
   useEffect(() => {
     void cargarCasos();
   }, [cargarCasos]);
@@ -106,7 +111,7 @@ const handleCasoGuardado = async () => {
   const handleEliminarCaso = async (id: number, numeroContrato: string) => {
     if (
       !confirm(
-        `¿Está seguro de que desea eliminar el expediente N° ${numeroContrato}?`,
+        `¿Está seguro de que desea eliminar el expediente N° ${numeroContrato}?`
       )
     ) {
       return;
@@ -139,7 +144,7 @@ const handleCasoGuardado = async () => {
           ].some((valor) =>
             String(valor ?? "")
               .toLowerCase()
-              .includes(term),
+              .includes(term)
           );
 
         const coincideFiltros =
@@ -153,19 +158,29 @@ const handleCasoGuardado = async () => {
             getTextValue((caso as Caso & { subetapa?: unknown }).subetapa) ===
               filtros.subetapa);
 
-        return coincideTexto && coincideFiltros;
+        const valorAlerta = caso.camposCalculados?.alertaActualizacionBase as unknown;
+        const alertaActual = typeof valorAlerta === "string" ? valorAlerta.trim() : "";
+
+        const coincideAnalista =
+          !filtrosAlertas.analista ||
+          caso.analistaResponsable === filtrosAlertas.analista;
+
+        const coincideAlerta =
+          !filtrosAlertas.alerta ||
+          (filtrosAlertas.alerta === "SIN_ALERTA"
+            ? !alertaActual
+            : alertaActual === filtrosAlertas.alerta);
+
+        return (
+          coincideTexto && coincideFiltros && coincideAnalista && coincideAlerta
+        );
       }),
-    [casos, filtro, filtros],
+    [casos, filtro, filtros, filtrosAlertas]
   );
 
   const cerrarPaneles = () => {
     setPanelActivo(null);
   };
-
-  const casosConAnalista = casos.filter((caso) =>
-    Boolean(caso.analistaResponsable),
-  ).length;
-  const casosSinAnalista = Math.max(casos.length - casosConAnalista, 0);
 
   const limpiarFiltros = () => {
     setFiltros({ estado: "", categoria: "", etapa: "", subetapa: "" });
@@ -183,22 +198,24 @@ const handleCasoGuardado = async () => {
 
   return (
     <div className="flex min-h-screen w-full bg-white font-sans text-xs text-slate-800 [zoom:0.85]">
+      {/* BARRA LATERAL */}
       <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-slate-50 lg:flex">
-<div className="border-b border-slate-200 bg-white px-4 py-4">
-  <div className="flex flex-col items-center justify-center gap-2 text-center">
-    <Image
-      src="/image/GP L-06.png"
-      alt="Gómez Pineda Abogados"
-      width={200}
-      height={50}
-      className="h-12 w-auto object-contain"
-      priority
-    />
-    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-      <span className="text-slate-800 font-extrabold">NODEX</span> · Gestión vehicular
-    </p>
-  </div>
-</div>
+        <div className="border-b border-slate-200 bg-white px-4 py-4">
+          <div className="flex flex-col items-center justify-center gap-2 text-center">
+            <Image
+              src="/image/GP L-06.png"
+              alt="Gómez Pineda Abogados"
+              width={200}
+              height={50}
+              className="h-12 w-auto object-contain"
+              priority
+            />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <span className="font-extrabold text-slate-800">NODEX</span> ·
+              Gestión vehicular
+            </p>
+          </div>
+        </div>
 
         <nav
           className="flex-1 overflow-y-auto px-3 py-3.5"
@@ -211,7 +228,9 @@ const handleCasoGuardado = async () => {
             <button
               type="button"
               onClick={abrirCasos}
-              className={`${sidebarButton} ${vistaActiva === "casos" ? "bg-slate-200 font-bold text-slate-900" : ""}`}
+              className={`${sidebarButton} ${
+                vistaActiva === "casos" ? "bg-slate-200 font-bold text-slate-900" : ""
+              }`}
             >
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[10px] text-slate-500 shadow-xs">
                 01
@@ -260,23 +279,40 @@ const handleCasoGuardado = async () => {
               </span>
               <span>Carga de casos</span>
             </button>
+
             <button
               type="button"
-              onClick={abrirGestionMasiva}
-              className={`${sidebarButton} ${vistaActiva === "gestion-masiva" ? "bg-slate-200 font-bold text-slate-900" : ""}`}
+              onClick={() => setPanelActivo("auto-inyeccion-casos")}
+              className={sidebarButton}
             >
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[10px] text-slate-500 shadow-xs">
                 05
               </span>
+              <span>Auto inyección casos</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={abrirGestionMasiva}
+              className={`${sidebarButton} ${
+                vistaActiva === "gestion-masiva"
+                  ? "bg-slate-200 font-bold text-slate-900"
+                  : ""
+              }`}
+            >
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[10px] text-slate-500 shadow-xs">
+                06
+              </span>
               <span>Gestión masiva</span>
             </button>
+
             <button
               type="button"
               onClick={() => setPanelActivo("gestion-datos")}
               className={sidebarButton}
             >
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[10px] text-slate-500 shadow-xs">
-                06
+                07
               </span>
               <span>Gestionar datos</span>
             </button>
@@ -300,6 +336,7 @@ const handleCasoGuardado = async () => {
         </div>
       </aside>
 
+      {/* ÁREA DE CONTENIDO */}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="shrink-0 border-b border-slate-200 bg-white">
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5 lg:px-6">
@@ -337,49 +374,6 @@ const handleCasoGuardado = async () => {
           </div>
         </header>
 
-        {vistaActiva === "casos" && (
-          <div className="shrink-0 border-b border-slate-200 bg-slate-50/70">
-            <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-2.5 sm:px-5 lg:px-6">
-              <div className="relative w-full max-w-xl">
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-                >
-                  ⌕
-                </span>
-                <input
-                  type="search"
-                  placeholder="Buscar por contrato, radicado, placa, NIT, banco, marca o analista..."
-                  value={filtro}
-                  onChange={(event) => setFiltro(event.target.value)}
-                  className="w-full rounded-md border border-slate-200 bg-white py-1.5 pl-8 pr-2.5 text-xs text-slate-800 shadow-xs outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200/70"
-                  aria-label="Buscar expedientes"
-                />
-              </div>
-
-              <div className="flex items-center gap-2.5 text-[11px] text-slate-500">
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 shadow-xs">
-                  Registros visibles:{" "}
-                  <strong className="text-slate-800">
-                    {casosFiltrados.length}
-                  </strong>
-                  <span className="mx-1 text-slate-300">/</span>
-                  {casos.length}
-                </span>
-                {filtro && (
-                  <button
-                    type="button"
-                    onClick={() => setFiltro("")}
-                    className="font-semibold text-slate-600 underline-offset-4 hover:text-slate-900 hover:underline"
-                  >
-                    Limpiar búsqueda
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         {errorMsg && (
           <div
             role="alert"
@@ -396,66 +390,67 @@ const handleCasoGuardado = async () => {
           </div>
         )}
 
-        <main className="flex-1 overflow-auto bg-white p-3.5 sm:p-5 lg:p-6">
-          {vistaActiva === "casos" && (
-            <div className="mx-auto mb-4 grid w-full max-w-[1600px] grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                  Total expedientes
-                </p>
-                <p className="mt-1 text-xl font-bold text-slate-900">
-                  {casos.length}
-                </p>
-                <p className="mt-0.5 text-[10px] text-slate-500">
-                  Registros en el sistema
-                </p>
-              </div>
-              <div className="rounded-lg border border-[#d8e8e4] bg-[#f7fbfa] p-3 shadow-xs">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#52716b]">
-                  Vista actual
-                </p>
-                <p className="mt-1 text-xl font-bold text-[#347365]">
-                  {casosFiltrados.length}
-                </p>
-                <p className="mt-0.5 text-[10px] text-slate-500">
-                  Expedientes visibles
-                </p>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                  Con responsable
-                </p>
-                <p className="mt-1 text-xl font-bold text-slate-900">
-                  {casosConAnalista}
-                </p>
-                <p className="mt-0.5 text-[10px] text-slate-500">
-                  Casos asignados
-                </p>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                  Por asignar
-                </p>
-                <p className="mt-1 text-xl font-bold text-slate-900">
-                  {casosSinAnalista}
-                </p>
-                <p className="mt-0.5 text-[10px] text-slate-500">
-                  Requieren seguimiento
-                </p>
-              </div>
-            </div>
-          )}
-
-          {vistaActiva === "gestion-masiva" ? (
-            <div className="mx-auto min-h-full w-full max-w-[1600px]">
-              <GestionMasiva
-                casos={casosFiltrados}
-                onClose={abrirCasos}
-                onActualizado={cargarCasos}
-              />
-            </div>
-          ) : (
+        <main className="flex-1 overflow-auto bg-slate-50/50 p-3.5 sm:p-5 lg:p-6">
+          {vistaActiva === "casos" ? (
             <div className="mx-auto w-full max-w-[1600px] space-y-4">
+              
+              {/* 1. FILTROS DE ALERTAS (ARRIBA DE LAS TARJETAS) */}
+              <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
+                <FiltrosCasosAlertas
+                  casos={casos}
+                  filtros={filtrosAlertas}
+                  onChange={setFiltrosAlertas}
+                  onClear={() => setFiltrosAlertas({ analista: "", alerta: "" })}
+                />
+              </div>
+
+              {/* 2. TARJETAS DE ALERTAS Y MÉTRICAS */}
+              <TarjetasMetricasAlerta
+                casos={casos}
+                casosFiltradosCount={casosFiltrados.length}
+              />
+
+              {/* 3. BARRA DE BÚSQUEDA Y REGISTROS VISIBLES */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
+                <div className="relative w-full max-w-xl">
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                  >
+                    ⌕
+                  </span>
+                  <input
+                    type="search"
+                    placeholder="Buscar por contrato, radicado, placa, NIT, banco, marca o analista..."
+                    value={filtro}
+                    onChange={(event) => setFiltro(event.target.value)}
+                    className="w-full rounded-md border border-slate-200 bg-white py-1.5 pl-8 pr-2.5 text-xs text-slate-800 shadow-xs outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200/70"
+                    aria-label="Buscar expedientes"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2.5 text-[11px] text-slate-500">
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 shadow-xs">
+                    Registros visibles:{" "}
+                    <strong className="text-slate-800">
+                      {casosFiltrados.length}
+                    </strong>
+                    <span className="mx-1 text-slate-300">/</span>
+                    {casos.length}
+                  </span>
+                  {filtro && (
+                    <button
+                      type="button"
+                      onClick={() => setFiltro("")}
+                      className="font-semibold text-slate-600 underline-offset-4 hover:text-slate-900 hover:underline"
+                    >
+                      Limpiar búsqueda
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* PANELES ACTIVOS DE HERRAMIENTAS */}
               {panelActivo && (
                 <div className="flex justify-end">
                   <button
@@ -474,10 +469,14 @@ const handleCasoGuardado = async () => {
               {panelActivo === "carga-casos" && (
                 <CargaCasosExcel onClose={() => setPanelActivo(null)} />
               )}
+              {panelActivo === "auto-inyeccion-casos" && (
+                <AutoInyeccionCasos onClose={() => setPanelActivo(null)} />
+              )}
               {panelActivo === "gestion-datos" && (
                 <GestionDatos onClose={() => setPanelActivo(null)} />
               )}
 
+              {/* 4. TABLA GENERAL (ABAJO) */}
               <section className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs sm:p-4 lg:p-5">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-100 pb-3">
                   <div>
@@ -501,6 +500,14 @@ const handleCasoGuardado = async () => {
                 />
               </section>
             </div>
+          ) : (
+            <div className="mx-auto min-h-full w-full max-w-[1600px]">
+              <GestionMasiva
+                casos={casosFiltrados}
+                onClose={abrirCasos}
+                onActualizado={cargarCasos}
+              />
+            </div>
           )}
         </main>
       </div>
@@ -511,7 +518,7 @@ const handleCasoGuardado = async () => {
           setModalAbierto(false);
           setCasoAEditar(null);
         }}
-        onCasoCreado={handleCasoGuardado}
+        onCasoCreado={cargarCasos}
         casoAEditar={casoAEditar}
       />
 

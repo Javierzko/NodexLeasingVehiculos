@@ -1,4 +1,4 @@
-//schema prisma 
+//squema
 
 generator client {
   provider = "prisma-client-js"
@@ -234,8 +234,9 @@ model Caso {
   vehiculoPlaca String
   vehiculo      Vehiculo @relation(fields: [vehiculoPlaca], references: [placa])
 
-  procesoJuridico ProcesoJuridico?
-  auditoriaMulta  AuditoriaMulta?
+  procesoJuridico  ProcesoJuridico?
+  auditoriaMulta   AuditoriaMulta?
+  camposCalculados CamposCalculados?
 
   // Historial de estados, etapas y subetapas
   estadosCaso EstadosCaso[] @relation("CasoEstadosCaso")
@@ -295,6 +296,7 @@ model AuditoriaMulta {
   limitacionesPropiedad              String?
   tipoLimitaciones                   String?
   garantiasMobiliarias               String?
+  normalizacionSaneamiento           String?
   simitMultasPropietarioResoluciones String?
   simitMultasLocatario               String?
   multasPlaca                        String?
@@ -304,7 +306,7 @@ model AuditoriaMulta {
 }
 
 // ==========================================
-// 7. GESTIÓN DE CASO
+// 7. GESTIÓN DE CASO Y ARCHIVOS
 // ==========================================
 model TipoDocumento {
   id          Int     @id @default(autoincrement())
@@ -374,4 +376,45 @@ model EstadosCaso {
 
   caso   Caso   @relation("CasoEstadosCaso", fields: [casoId], references: [id], onDelete: Cascade)
   estado Estado @relation("EstadoEstadosCaso", fields: [estadoId], references: [id])
+}
+
+// ==========================================
+// 9. CAMPOS CALCULADOS Y ALERTAS
+// ==========================================
+model CamposCalculados {
+  id     Int  @id @default(autoincrement())
+  casoId Int  @unique
+  caso   Caso @relation(fields: [casoId], references: [id], onDelete: Cascade)
+
+  // Asignaciones y Responsables Secundarios
+  responsableGestion String?
+
+  // Trazabilidad y Comentarios
+  diasDesdeUltimoComentario Int?
+
+  // Alertas de Notificación
+  alertaCorreoNotificacionInicial Boolean @default(false)
+  alertaNotificacionLocatario     Boolean @default(false)
+  diasDesdeUltimaNotificacion     Int?
+
+  // Alertas y Tiempos de Saneamiento (DP y Tutela)
+  alertaActualizacionBase String?
+  alertaRespuestaDp       Boolean @default(false)
+  diasDp                  Int?
+  alertaRespuestaTutela   Boolean @default(false)
+  diasRespuestaTutela     Int?
+
+  // Suspensión
+  alertaReactivacionCaso Boolean @default(false)
+  diasSuspensionCaso     Int?
+
+  // Indicadores de Tiempo y ANS
+  tiempoTotalProceso   Float?
+  bloqueJuridicoTotal  Float?
+  alertaAnsCompleta    Boolean @default(false)
+  estadoVencimientoAns String?
+  ansGpa               String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

@@ -1,16 +1,32 @@
-//razi components/AgregarGestion
+// components/AgregarGestion.tsx
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   useBusquedaInteligente,
   TipoBusqueda,
 } from "@/hooks/useBusquedaInteligente";
 import { useCrearGestion, useHistorialGestiones } from "@/hooks/useGestion";
+import { leasingApi } from "@/services/leasingApi";
+import { Caso } from "@/types/leasing";
 
 interface AgregarGestionProps {
   onClose?: () => void;
+}
+
+// Función auxiliar para formatear fechas puras YYYY-MM-DD evitando el desfasaje por zona horaria UTC-5
+function formatearFechaLocal(fechaStr: string | null | undefined): string {
+  if (!fechaStr) return "";
+
+  // Si viene en formato ISO (2026-08-28T...) o solo fecha (2026-08-28)
+  const partes = fechaStr.split("T")[0].split("-");
+  if (partes.length === 3) {
+    const [a, m, d] = partes;
+    return `${d}/${m}/${a}`;
+  }
+
+  return new Date(fechaStr).toLocaleDateString("es-CO");
 }
 
 export default function AgregarGestion({ onClose }: AgregarGestionProps) {
@@ -22,6 +38,32 @@ export default function AgregarGestion({ onClose }: AgregarGestionProps) {
   const [comentario, setComentario] = useState("");
   const [fechaProximaGestion, setFechaProximaGestion] = useState("");
   const [analistaResponsable, setAnalistaResponsable] = useState("");
+
+  // Estado para cargar la lista global de casos y extraer analistas
+  const [casosTotales, setCasosTotales] = useState<Caso[]>([]);
+
+  useEffect(() => {
+    async function obtenerAnalistasSistema() {
+      try {
+        const data = await leasingApi.getCasos();
+        if (Array.isArray(data)) {
+          setCasosTotales(data);
+        }
+      } catch (error) {
+        console.error("Error al obtener lista de analistas:", error);
+      }
+    }
+    void obtenerAnalistasSistema();
+  }, []);
+
+  // Extracción dinámica de analistas únicos
+  const analistasDisponibles = useMemo(() => {
+    const nombres = casosTotales
+      .map((c) => c.analistaResponsable)
+      .filter((nombre): nombre is string => Boolean(nombre && nombre.trim() !== ""));
+
+    return Array.from(new Set(nombres)).sort();
+  }, [casosTotales]);
 
   const {
     data: resultadoBusqueda,
@@ -41,6 +83,11 @@ export default function AgregarGestion({ onClose }: AgregarGestionProps) {
 
     setCasoSeleccionado(caso);
     setMostrarResultados(false);
+    
+    // Auto-selecciona el analista responsable si el caso ya tiene uno asignado
+    if (caso.analistaResponsable) {
+      setAnalistaResponsable(caso.analistaResponsable);
+    }
   };
 
   const handleGuardar = (e: React.FormEvent) => {
@@ -62,34 +109,35 @@ export default function AgregarGestion({ onClose }: AgregarGestionProps) {
     }
 
     if (!analistaResponsable.trim()) {
-      alert("Escribe el analista responsable.");
+      alert("Selecciona el analista responsable.");
       return;
     }
 
-    crearGestion.mutate(
-      {
-        casoId: casoSeleccionado.id,
-        tipoObservacion,
-        comentario: comentario.trim(),
-        fechaProximaGestion: fechaProximaGestion || null,
-        analistaResponsable: analistaResponsable.trim(),
+    const payloadGuardar = {
+      casoId: casoSeleccionado.id,
+      tipoObservacion,
+      comentario: comentario.trim(),
+      fechaProximaGestion: fechaProximaGestion || null,
+      analistaResponsable: analistaResponsable.trim(),
+    };
+
+    console.log("===[ ENVIANDO NUEVA GESTIÓN ]===", payloadGuardar);
+
+    crearGestion.mutate(payloadGuardar, {
+      onSuccess: () => {
+        setComentario("");
+        setFechaProximaGestion("");
+        setAnalistaResponsable("");
+        alert("Gestión registrada correctamente.");
       },
-      {
-        onSuccess: () => {
-          setComentario("");
-          setFechaProximaGestion("");
-          setAnalistaResponsable("");
-          alert("Gestión registrada correctamente.");
-        },
-        onError: (error) => {
-          alert(
-            error instanceof Error
-              ? error.message
-              : "Error al registrar la gestión.",
-          );
-        },
+      onError: (error) => {
+        alert(
+          error instanceof Error
+            ? error.message
+            : "Error al registrar la gestión."
+        );
       },
-    );
+    });
   };
 
   const resultados = resultadoBusqueda?.data ?? [];
@@ -168,8 +216,8 @@ export default function AgregarGestion({ onClose }: AgregarGestionProps) {
                     tipoBusqueda === "contrato"
                       ? "Escribe el número de contrato..."
                       : tipoBusqueda === "placa"
-                        ? "Escribe la placa..."
-                        : "Escribe el NIT..."
+                      ? "Escribe la placa..."
+                      : "Escribe el NIT..."
                   }
                   className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -190,59 +238,54 @@ export default function AgregarGestion({ onClose }: AgregarGestionProps) {
 
                     {!buscando && !errorBusqueda && resultados.length > 0 && (
                       <div className="max-h-64 overflow-y-auto">
-                        {resultados.map((caso: any) => {
-                          console.log("CASO BUSQUEDA:", caso);
-                          console.log("ESTADO:", caso.estado);
+                        {resultados.map((caso: any) => (
+                          <button
+                            key={caso.id}
+                            type="button"
+                            onClick={() => seleccionarCaso(caso)}
+                            className="w-full border-b border-slate-100 p-4 text-left last:border-b-0 hover:bg-blue-50"
+                          >
+                            <p className="font-semibold text-slate-800">
+                              Caso encontrado
+                            </p>
 
-                          return (
-                            <button
-                              key={caso.id}
-                              type="button"
-                              onClick={() => seleccionarCaso(caso)}
-                              className="w-full border-b border-slate-100 p-4 text-left last:border-b-0 hover:bg-blue-50"
-                            >
-                              <p className="font-semibold text-slate-800">
-                                Caso encontrado
+                            <div className="mt-1 space-y-1 text-xs text-slate-500">
+                              <p>
+                                Contrato:{" "}
+                                <span className="font-medium text-slate-700">
+                                  {caso.numeroContrato || "N/A"}
+                                </span>
                               </p>
 
-                              <div className="mt-1 space-y-1 text-xs text-slate-500">
-                                <p>
-                                  Contrato:{" "}
-                                  <span className="font-medium text-slate-700">
-                                    {caso.numeroContrato || "N/A"}
-                                  </span>
-                                </p>
+                              <p>
+                                Placa:{" "}
+                                <span className="font-medium text-slate-700">
+                                  {caso.vehiculoPlaca ||
+                                    caso.vehiculo?.placa ||
+                                    "N/A"}
+                                </span>
+                              </p>
 
-                                <p>
-                                  Placa:{" "}
-                                  <span className="font-medium text-slate-700">
-                                    {caso.vehiculoPlaca ||
-                                      caso.vehiculo?.placa ||
-                                      "N/A"}
-                                  </span>
-                                </p>
-
-                                <p>
-                                  Estado:{" "}
-                                  <span className="font-medium text-slate-700">
-                                    {caso.estado?.nombre || "N/A"}
-                                  </span>
-                                </p>
-                              </div>
-                            </button>
-                          );
-                        })}
-
-                        {!buscando &&
-                          !errorBusqueda &&
-                          resultadoBusqueda &&
-                          resultados.length === 0 && (
-                            <div className="p-4 text-center text-sm text-slate-500">
-                              No se encontró ningún caso.
+                              <p>
+                                Estado:{" "}
+                                <span className="font-medium text-slate-700">
+                                  {caso.estado?.nombre || "N/A"}
+                                </span>
+                              </p>
                             </div>
-                          )}
+                          </button>
+                        ))}
                       </div>
                     )}
+
+                    {!buscando &&
+                      !errorBusqueda &&
+                      resultadoBusqueda &&
+                      resultados.length === 0 && (
+                        <div className="p-4 text-center text-sm text-slate-500">
+                          No se encontró ningún caso.
+                        </div>
+                      )}
                   </div>
                 )}
               </div>
@@ -292,9 +335,9 @@ export default function AgregarGestion({ onClose }: AgregarGestionProps) {
                   </div>
 
                   <div>
-                    <span className="text-xs text-slate-500">ID</span>
-                    <p className="truncate text-xs text-slate-600">
-                      {casoSeleccionado.id}
+                    <span className="text-xs text-slate-500">Analista Asignado</span>
+                    <p className="font-semibold text-slate-800">
+                      {casoSeleccionado.analistaResponsable || "Sin asignación"}
                     </p>
                   </div>
                 </div>
@@ -330,18 +373,24 @@ export default function AgregarGestion({ onClose }: AgregarGestionProps) {
                 </select>
               </div>
 
+              {/* DESPLEGABLE DINÁMICO DE ANALISTAS */}
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-600">
                   Analista Responsable *
                 </label>
 
-                <input
-                  type="text"
+                <select
                   value={analistaResponsable}
                   onChange={(e) => setAnalistaResponsable(e.target.value)}
-                  placeholder="Nombre del analista"
                   className="w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                >
+                  <option value="">Selecciona un analista...</option>
+                  {analistasDisponibles.map((nombre) => (
+                    <option key={nombre} value={nombre}>
+                      {nombre}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="md:col-span-2">
@@ -426,7 +475,7 @@ export default function AgregarGestion({ onClose }: AgregarGestionProps) {
 
                         <span className="text-xs text-slate-500">
                           {new Date(gestion.fechaGestion).toLocaleString(
-                            "es-CO",
+                            "es-CO"
                           )}
                         </span>
                       </div>
@@ -448,9 +497,7 @@ export default function AgregarGestion({ onClose }: AgregarGestionProps) {
                         <p className="mt-1 text-xs text-slate-500">
                           Próxima gestión:{" "}
                           <span className="font-semibold">
-                            {new Date(
-                              gestion.fechaProximaGestion,
-                            ).toLocaleDateString("es-CO")}
+                            {formatearFechaLocal(gestion.fechaProximaGestion)}
                           </span>
                         </p>
                       )}

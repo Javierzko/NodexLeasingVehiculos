@@ -72,13 +72,12 @@ function CargaDocumentosContent() {
         <div className="mx-auto flex w-full max-w-[1536px] flex-col gap-4 px-4 py-4 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:px-10">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3 sm:gap-x-7">
             <div className="flex items-center border-r border-primary/50 pr-6 sm:pr-7">
-              <Image
+              <img
                 src="/image/GP L-06.png"
                 alt="Gómez Pineda Abogados"
                 width={160}
                 height={40}
                 className="h-10 w-auto object-contain"
-                priority
               />
             </div>
 

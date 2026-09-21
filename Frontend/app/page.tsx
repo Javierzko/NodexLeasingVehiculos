@@ -202,13 +202,12 @@ export default function LeasingPage() {
       <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-slate-50 lg:flex">
         <div className="border-b border-slate-200 bg-white px-4 py-4">
           <div className="flex flex-col items-center justify-center gap-2 text-center">
-            <Image
+            <img
               src="/image/GP L-06.png"
               alt="Gómez Pineda Abogados"
               width={200}
               height={50}
               className="h-12 w-auto object-contain"
-              priority
             />
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
               <span className="font-extrabold text-slate-800">NODEX</span> ·
